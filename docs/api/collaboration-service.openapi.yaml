@@ -1,0 +1,1076 @@
+openapi: 3.1.0
+
+info:
+  title: AlgoVerse Collaboration Service API
+  version: 1.0.0
+  description: |
+    Real-time collaborative coding rooms for AlgoVerse. Supports pair programming,
+    group practice sessions, CRDT-based shared editor, voice/video via WebRTC, and
+    in-room chat.
+
+    ## WebSocket — Real-time Collaboration
+
+    **Endpoint:** `wss://api.algoverse.io/collab/v1/ws/rooms/{code}`
+
+    ### Authentication
+    Pass the JWT access token as a query parameter:
+    ```
+    wss://api.algoverse.io/collab/v1/ws/rooms/ABC123?token=<accessToken>
+    ```
+
+    ### Connection Flow
+    1. Client connects with a valid token.
+    2. Server sends an `EDITOR_STATE` message containing the full CRDT document
+       and current participant list.
+    3. Client can start sending `EDITOR_OPERATION` (CRDT delta) messages immediately.
+    4. Server broadcasts all operations to all other participants in the room.
+    5. Client sends a `PING` every 25 seconds; server replies with `PONG`.
+       If no `PING` is received within 50 seconds, the server closes with code 4008.
+    6. On graceful disconnect, client sends `leave` REST call; the server broadcasts
+       `USER_LEFT` to remaining participants.
+
+    ---
+
+    ## WebSocket Message Protocol
+
+    All messages are JSON objects with the following envelope:
+    ```json
+    {
+      "type": "<MESSAGE_TYPE>",
+      "roomCode": "<code>",
+      "senderId": "<userId>",
+      "payload": { ... },
+      "timestamp": "<ISO-8601>"
+    }
+    ```
+
+    ---
+
+    ## CLIENT → SERVER Message Types
+
+    ### EDITOR_OPERATION
+    Sends a CRDT delta operation for the shared code editor.
+    ```json
+    {
+      "type": "EDITOR_OPERATION",
+      "roomCode": "ABC123",
+      "senderId": "usr_01HXYZ1234ABCDEF",
+      "payload": {
+        "operationId": "op_01HXYZ9999",
+        "clientClock": 42,
+        "delta": {
+          "retain": 150,
+          "insert": "    return seen[target - v]"
+        },
+        "cursorAfter": { "line": 7, "col": 28 }
+      },
+      "timestamp": "2024-11-05T16:00:01Z"
+    }
+    ```
+
+    ### CURSOR_MOVE
+    Broadcasts the user's cursor/selection position to collaborators.
+    ```json
+    {
+      "type": "CURSOR_MOVE",
+      "roomCode": "ABC123",
+      "senderId": "usr_01HXYZ1234ABCDEF",
+      "payload": {
+        "cursor": { "line": 7, "col": 28 },
+        "selection": {
+          "start": { "line": 7, "col": 10 },
+          "end": { "line": 7, "col": 28 }
+        }
+      },
+      "timestamp": "2024-11-05T16:00:02Z"
+    }
+    ```
+
+    ### LANGUAGE_CHANGE
+    Changes the active programming language for the room.
+    ```json
+    {
+      "type": "LANGUAGE_CHANGE",
+      "roomCode": "ABC123",
+      "senderId": "usr_01HXYZ1234ABCDEF",
+      "payload": {
+        "language": "java"
+      },
+      "timestamp": "2024-11-05T16:00:05Z"
+    }
+    ```
+
+    ### RUN_CODE
+    Triggers a non-judged execution run for the current room code.
+    ```json
+    {
+      "type": "RUN_CODE",
+      "roomCode": "ABC123",
+      "senderId": "usr_01HXYZ1234ABCDEF",
+      "payload": {
+        "stdin": "2 7 11 15\n9",
+        "timeoutMs": 5000
+      },
+      "timestamp": "2024-11-05T16:00:10Z"
+    }
+    ```
+
+    ### CHAT_MESSAGE
+    Sends a chat message to all room participants.
+    ```json
+    {
+      "type": "CHAT_MESSAGE",
+      "roomCode": "ABC123",
+      "senderId": "usr_01HXYZ1234ABCDEF",
+      "payload": {
+        "messageId": "msg_01HXYZ0001",
+        "text": "Let's try the hash map approach instead of brute force.",
+        "replyToId": null
+      },
+      "timestamp": "2024-11-05T16:00:15Z"
+    }
+    ```
+
+    ### WEBRTC_SIGNAL
+    Tunnels a WebRTC signaling message (SDP offer/answer or ICE candidate) to a specific peer.
+    ```json
+    {
+      "type": "WEBRTC_SIGNAL",
+      "roomCode": "ABC123",
+      "senderId": "usr_01HXYZ1234ABCDEF",
+      "payload": {
+        "targetUserId": "usr_01HXYZCOLLAB01",
+        "signal": {
+          "type": "offer",
+          "sdp": "v=0\r\no=- 46117317 2 IN IP4 127.0.0.1\r\ns=-\r\n..."
+        }
+      },
+      "timestamp": "2024-11-05T16:00:20Z"
+    }
+    ```
+
+    ---
+
+    ## SERVER → CLIENT Message Types
+
+    ### EDITOR_STATE
+    Sent on connection with the full CRDT document state.
+    ```json
+    {
+      "type": "EDITOR_STATE",
+      "roomCode": "ABC123",
+      "senderId": "server",
+      "payload": {
+        "documentContent": "class Solution:\n    def twoSum(self, nums, target):\n        pass\n",
+        "language": "python3",
+        "serverClock": 41,
+        "participants": [
+          {
+            "userId": "usr_01HXYZCOLLAB01",
+            "displayName": "Bob Builder",
+            "avatarUrl": "https://cdn.algoverse.io/avatars/usr_01HXYZCOLLAB01.webp",
+            "role": "HOST",
+            "cursor": { "line": 3, "col": 12 },
+            "color": "#FF6B6B",
+            "joinedAt": "2024-11-05T15:55:00Z"
+          }
+        ]
+      },
+      "timestamp": "2024-11-05T16:00:00Z"
+    }
+    ```
+
+    ### EDITOR_OPERATION (broadcast)
+    Broadcast of a peer's CRDT delta to all other participants.
+    ```json
+    {
+      "type": "EDITOR_OPERATION",
+      "roomCode": "ABC123",
+      "senderId": "usr_01HXYZ1234ABCDEF",
+      "payload": {
+        "operationId": "op_01HXYZ9999",
+        "serverClock": 42,
+        "delta": {
+          "retain": 150,
+          "insert": "    return seen[target - v]"
+        },
+        "cursorAfter": { "line": 7, "col": 28 }
+      },
+      "timestamp": "2024-11-05T16:00:01Z"
+    }
+    ```
+
+    ### CURSOR_UPDATE
+    Broadcast of a peer's cursor/selection position.
+    ```json
+    {
+      "type": "CURSOR_UPDATE",
+      "roomCode": "ABC123",
+      "senderId": "usr_01HXYZ1234ABCDEF",
+      "payload": {
+        "displayName": "Jane Doe",
+        "color": "#4ECDC4",
+        "cursor": { "line": 7, "col": 28 },
+        "selection": {
+          "start": { "line": 7, "col": 10 },
+          "end": { "line": 7, "col": 28 }
+        }
+      },
+      "timestamp": "2024-11-05T16:00:02Z"
+    }
+    ```
+
+    ### USER_JOINED
+    Broadcast when a new participant connects to the room.
+    ```json
+    {
+      "type": "USER_JOINED",
+      "roomCode": "ABC123",
+      "senderId": "server",
+      "payload": {
+        "participant": {
+          "userId": "usr_01HXYZ1234ABCDEF",
+          "displayName": "Jane Doe",
+          "avatarUrl": "https://cdn.algoverse.io/avatars/usr_01HXYZ1234ABCDEF.webp",
+          "role": "PARTICIPANT",
+          "color": "#4ECDC4",
+          "joinedAt": "2024-11-05T16:00:00Z"
+        }
+      },
+      "timestamp": "2024-11-05T16:00:00Z"
+    }
+    ```
+
+    ### USER_LEFT
+    Broadcast when a participant disconnects.
+    ```json
+    {
+      "type": "USER_LEFT",
+      "roomCode": "ABC123",
+      "senderId": "server",
+      "payload": {
+        "userId": "usr_01HXYZ1234ABCDEF",
+        "displayName": "Jane Doe",
+        "leftAt": "2024-11-05T16:30:00Z"
+      },
+      "timestamp": "2024-11-05T16:30:00Z"
+    }
+    ```
+
+    ### CODE_RESULT
+    Sent after a `RUN_CODE` message completes execution.
+    ```json
+    {
+      "type": "CODE_RESULT",
+      "roomCode": "ABC123",
+      "senderId": "server",
+      "payload": {
+        "triggeredBy": "usr_01HXYZ1234ABCDEF",
+        "stdout": "0 1\n",
+        "stderr": "",
+        "exitCode": 0,
+        "runtimeMs": 62,
+        "memoryMb": 9.4,
+        "status": "SUCCESS"
+      },
+      "timestamp": "2024-11-05T16:00:12Z"
+    }
+    ```
+
+    ### CHAT_MESSAGE (broadcast)
+    Broadcast of a room participant's chat message.
+    ```json
+    {
+      "type": "CHAT_MESSAGE",
+      "roomCode": "ABC123",
+      "senderId": "usr_01HXYZ1234ABCDEF",
+      "payload": {
+        "messageId": "msg_01HXYZ0001",
+        "displayName": "Jane Doe",
+        "avatarUrl": "https://cdn.algoverse.io/avatars/usr_01HXYZ1234ABCDEF.webp",
+        "text": "Let's try the hash map approach instead of brute force.",
+        "replyToId": null
+      },
+      "timestamp": "2024-11-05T16:00:15Z"
+    }
+    ```
+
+    ### WEBRTC_SIGNAL (relay)
+    Relays a WebRTC signaling message to the target peer.
+    ```json
+    {
+      "type": "WEBRTC_SIGNAL",
+      "roomCode": "ABC123",
+      "senderId": "usr_01HXYZ1234ABCDEF",
+      "payload": {
+        "targetUserId": "usr_01HXYZCOLLAB01",
+        "signal": {
+          "type": "answer",
+          "sdp": "v=0\r\no=- 12345678 2 IN IP4 127.0.0.1\r\ns=-\r\n..."
+        }
+      },
+      "timestamp": "2024-11-05T16:00:21Z"
+    }
+    ```
+
+    ### WebSocket Close Codes
+
+    | Code | Reason                          |
+    |------|---------------------------------|
+    | 4001 | Unauthorized (invalid token)    |
+    | 4003 | Room not found                  |
+    | 4004 | Room is full                    |
+    | 4005 | Room has ended                  |
+    | 4008 | Heartbeat timeout               |
+    | 4009 | Kicked by host                  |
+
+  contact:
+    name: AlgoVerse Platform Team
+    email: platform@algoverse.io
+
+servers:
+  - url: https://api.algoverse.io/collab/v1
+    description: Production REST
+  - url: https://staging-api.algoverse.io/collab/v1
+    description: Staging REST
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Rooms
+    description: Collaboration room lifecycle management
+
+paths:
+  /rooms:
+    post:
+      tags: [Rooms]
+      operationId: createRoom
+      summary: Create a new collaboration room
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoomRequest'
+            example:
+              type: PRACTICE
+              problemId: prb_01HXYZ0001TWOSUM
+              maxParticipants: 3
+              settings:
+                allowChat: true
+                allowVoice: true
+                allowVideo: false
+                language: python3
+                isPublic: false
+                autoEndAfterMinutes: 120
+      responses:
+        '201':
+          description: Room created
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+              example:
+                id: rm_01HXYZ6666
+                code: ABC123
+                type: PRACTICE
+                problemId: prb_01HXYZ0001TWOSUM
+                problemTitle: Two Sum
+                hostId: usr_01HXYZ1234ABCDEF
+                status: WAITING
+                maxParticipants: 3
+                participantCount: 1
+                participants:
+                  - userId: usr_01HXYZ1234ABCDEF
+                    displayName: Jane Doe
+                    avatarUrl: "https://cdn.algoverse.io/avatars/usr_01HXYZ1234ABCDEF.webp"
+                    role: HOST
+                    color: "#FF6B6B"
+                    joinedAt: "2024-11-05T16:00:00Z"
+                settings:
+                  allowChat: true
+                  allowVoice: true
+                  allowVideo: false
+                  language: python3
+                  isPublic: false
+                  autoEndAfterMinutes: 120
+                createdAt: "2024-11-05T16:00:00Z"
+                expiresAt: "2024-11-05T18:00:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /rooms/{code}:
+    get:
+      tags: [Rooms]
+      operationId: getRoom
+      summary: Get a room's details and current participants
+      security:
+        - bearerAuth: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/codeParam'
+      responses:
+        '200':
+          description: Room detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+              example:
+                id: rm_01HXYZ6666
+                code: ABC123
+                type: PRACTICE
+                problemId: prb_01HXYZ0001TWOSUM
+                problemTitle: Two Sum
+                hostId: usr_01HXYZ1234ABCDEF
+                status: ACTIVE
+                maxParticipants: 3
+                participantCount: 2
+                participants:
+                  - userId: usr_01HXYZ1234ABCDEF
+                    displayName: Jane Doe
+                    avatarUrl: "https://cdn.algoverse.io/avatars/usr_01HXYZ1234ABCDEF.webp"
+                    role: HOST
+                    color: "#FF6B6B"
+                    joinedAt: "2024-11-05T16:00:00Z"
+                  - userId: usr_01HXYZCOLLAB01
+                    displayName: Bob Builder
+                    avatarUrl: "https://cdn.algoverse.io/avatars/usr_01HXYZCOLLAB01.webp"
+                    role: PARTICIPANT
+                    color: "#4ECDC4"
+                    joinedAt: "2024-11-05T16:02:00Z"
+                settings:
+                  allowChat: true
+                  allowVoice: true
+                  allowVideo: false
+                  language: python3
+                  isPublic: false
+                  autoEndAfterMinutes: 120
+                createdAt: "2024-11-05T16:00:00Z"
+                expiresAt: "2024-11-05T18:00:00Z"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /rooms/{code}/join:
+    post:
+      tags: [Rooms]
+      operationId: joinRoom
+      summary: Join a room and receive a WebRTC signaling token
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/codeParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinRoomRequest'
+            example:
+              role: PARTICIPANT
+      responses:
+        '200':
+          description: Joined room successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JoinRoomResponse'
+              example:
+                room:
+                  id: rm_01HXYZ6666
+                  code: ABC123
+                  type: PRACTICE
+                  problemId: prb_01HXYZ0001TWOSUM
+                  problemTitle: Two Sum
+                  hostId: usr_01HXYZ1234ABCDEF
+                  status: ACTIVE
+                  maxParticipants: 3
+                  participantCount: 2
+                  participants:
+                    - userId: usr_01HXYZ1234ABCDEF
+                      displayName: Jane Doe
+                      avatarUrl: "https://cdn.algoverse.io/avatars/usr_01HXYZ1234ABCDEF.webp"
+                      role: HOST
+                      color: "#FF6B6B"
+                      joinedAt: "2024-11-05T16:00:00Z"
+                    - userId: usr_01HXYZCOLLAB01
+                      displayName: Bob Builder
+                      avatarUrl: "https://cdn.algoverse.io/avatars/usr_01HXYZCOLLAB01.webp"
+                      role: PARTICIPANT
+                      color: "#4ECDC4"
+                      joinedAt: "2024-11-05T16:02:00Z"
+                  settings:
+                    allowChat: true
+                    allowVoice: true
+                    allowVideo: false
+                    language: python3
+                    isPublic: false
+                    autoEndAfterMinutes: 120
+                  createdAt: "2024-11-05T16:00:00Z"
+                  expiresAt: "2024-11-05T18:00:00Z"
+                webrtcToken: "wrtc_eyJhbGciOiJIUzI1NiJ9.eyJyb29tIjoiQUJDMTIzIiwidXNlcklkIjoidXNyX..."
+                iceServers:
+                  - urls: ["stun:stun.algoverse.io:3478"]
+                  - urls: ["turn:turn.algoverse.io:3478"]
+                    username: "turn_usr_01HXYZCOLLAB01"
+                    credential: "turn_cred_xyz123"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /rooms/{code}/leave:
+    post:
+      tags: [Rooms]
+      operationId: leaveRoom
+      summary: Leave a collaboration room
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/codeParam'
+      responses:
+        '204':
+          description: Left the room successfully
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /rooms/{code}/history:
+    get:
+      tags: [Rooms]
+      operationId: getRoomHistory
+      summary: Get the event history for a room (chat, code runs, join/leave)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/codeParam'
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: types
+          in: query
+          description: Filter by event types
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [USER_JOINED, USER_LEFT, CHAT_MESSAGE, LANGUAGE_CHANGE, CODE_RESULT]
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: Room event history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomHistory'
+              example:
+                data:
+                  - eventType: USER_JOINED
+                    actorId: usr_01HXYZ1234ABCDEF
+                    actorDisplayName: Jane Doe
+                    payload:
+                      role: HOST
+                    timestamp: "2024-11-05T16:00:00Z"
+                  - eventType: USER_JOINED
+                    actorId: usr_01HXYZCOLLAB01
+                    actorDisplayName: Bob Builder
+                    payload:
+                      role: PARTICIPANT
+                    timestamp: "2024-11-05T16:02:00Z"
+                  - eventType: CHAT_MESSAGE
+                    actorId: usr_01HXYZ1234ABCDEF
+                    actorDisplayName: Jane Doe
+                    payload:
+                      messageId: msg_01HXYZ0001
+                      text: "Let's try the hash map approach."
+                      replyToId: null
+                    timestamp: "2024-11-05T16:00:15Z"
+                  - eventType: LANGUAGE_CHANGE
+                    actorId: usr_01HXYZCOLLAB01
+                    actorDisplayName: Bob Builder
+                    payload:
+                      language: java
+                    timestamp: "2024-11-05T16:05:00Z"
+                  - eventType: CODE_RESULT
+                    actorId: usr_01HXYZ1234ABCDEF
+                    actorDisplayName: Jane Doe
+                    payload:
+                      stdout: "0 1\n"
+                      status: SUCCESS
+                      runtimeMs: 62
+                    timestamp: "2024-11-05T16:00:12Z"
+                nextCursor: null
+                hasMore: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT access token. For WebSocket connections, pass as query parameter:
+        `?token=<accessToken>`
+
+  headers:
+    X-RateLimit-Limit:
+      description: Maximum requests allowed in the current window
+      schema:
+        type: integer
+        example: 60
+    X-RateLimit-Remaining:
+      description: Requests remaining
+      schema:
+        type: integer
+        example: 58
+    X-RateLimit-Reset:
+      description: UTC epoch seconds when the window resets
+      schema:
+        type: integer
+        example: 1715000400
+
+  parameters:
+    codeParam:
+      name: code
+      in: path
+      required: true
+      description: 6-character alphanumeric room join code
+      schema:
+        type: string
+        pattern: '^[A-Z0-9]{6}$'
+      example: ABC123
+
+  schemas:
+    RoomSettings:
+      type: object
+      properties:
+        allowChat:
+          type: boolean
+          default: true
+          description: Whether participants can send chat messages
+        allowVoice:
+          type: boolean
+          default: false
+          description: Whether voice (WebRTC audio) is enabled
+        allowVideo:
+          type: boolean
+          default: false
+          description: Whether video (WebRTC video) is enabled
+        language:
+          type: string
+          default: python3
+          description: Initial editor programming language
+        isPublic:
+          type: boolean
+          default: false
+          description: Whether the room appears in public listings
+        autoEndAfterMinutes:
+          type: integer
+          minimum: 5
+          maximum: 480
+          default: 120
+          description: Automatically close the room after this many minutes of inactivity
+
+    Participant:
+      type: object
+      required: [userId, displayName, role, color, joinedAt]
+      properties:
+        userId:
+          type: string
+          example: usr_01HXYZ1234ABCDEF
+        displayName:
+          type: string
+          example: Jane Doe
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+          example: "https://cdn.algoverse.io/avatars/usr_01HXYZ1234ABCDEF.webp"
+        role:
+          type: string
+          enum: [HOST, PARTICIPANT, OBSERVER]
+          description: |
+            HOST — created the room; can kick, change settings, end room.
+            PARTICIPANT — can edit code, run, and chat.
+            OBSERVER — read-only; can chat but not edit.
+          example: HOST
+        color:
+          type: string
+          description: Hex color assigned to this participant's cursor
+          example: "#FF6B6B"
+        joinedAt:
+          type: string
+          format: date-time
+          example: "2024-11-05T16:00:00Z"
+
+    Room:
+      type: object
+      required: [id, code, type, hostId, status, maxParticipants, participantCount, participants, settings, createdAt, expiresAt]
+      properties:
+        id:
+          type: string
+          example: rm_01HXYZ6666
+        code:
+          type: string
+          description: 6-character join code
+          pattern: '^[A-Z0-9]{6}$'
+          example: ABC123
+        type:
+          type: string
+          enum: [PRACTICE, INTERVIEW, STUDY_GROUP]
+          description: |
+            PRACTICE — open collaborative coding.
+            INTERVIEW — structured interviewer/interviewee mode.
+            STUDY_GROUP — multiple participants, host controls pace.
+          example: PRACTICE
+        problemId:
+          type: string
+          nullable: true
+          example: prb_01HXYZ0001TWOSUM
+        problemTitle:
+          type: string
+          nullable: true
+          example: Two Sum
+        hostId:
+          type: string
+          example: usr_01HXYZ1234ABCDEF
+        status:
+          type: string
+          enum: [WAITING, ACTIVE, ENDED]
+          example: ACTIVE
+        maxParticipants:
+          type: integer
+          minimum: 2
+          maximum: 10
+          example: 3
+        participantCount:
+          type: integer
+          example: 2
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+        settings:
+          $ref: '#/components/schemas/RoomSettings'
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-11-05T16:00:00Z"
+        expiresAt:
+          type: string
+          format: date-time
+          description: Time at which the room will be automatically closed
+          example: "2024-11-05T18:00:00Z"
+
+    CreateRoomRequest:
+      type: object
+      required: [type, maxParticipants]
+      properties:
+        type:
+          type: string
+          enum: [PRACTICE, INTERVIEW, STUDY_GROUP]
+          example: PRACTICE
+        problemId:
+          type: string
+          nullable: true
+          description: Problem to focus the session on (optional)
+        maxParticipants:
+          type: integer
+          minimum: 2
+          maximum: 10
+          default: 2
+        settings:
+          $ref: '#/components/schemas/RoomSettings'
+
+    JoinRoomRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          enum: [PARTICIPANT, OBSERVER]
+          description: Requested role in the room
+          example: PARTICIPANT
+
+    IceServer:
+      type: object
+      required: [urls]
+      properties:
+        urls:
+          type: array
+          items:
+            type: string
+          example: ["turn:turn.algoverse.io:3478"]
+        username:
+          type: string
+          nullable: true
+          example: "turn_usr_01HXYZCOLLAB01"
+        credential:
+          type: string
+          nullable: true
+          example: "turn_cred_xyz123"
+
+    JoinRoomResponse:
+      type: object
+      required: [room, webrtcToken, iceServers]
+      properties:
+        room:
+          $ref: '#/components/schemas/Room'
+        webrtcToken:
+          type: string
+          description: Short-lived JWT for WebRTC signaling authentication
+          example: "wrtc_eyJhbGciOiJIUzI1NiJ9.eyJyb29tIjoiQUJDMTIzIi..."
+        iceServers:
+          type: array
+          items:
+            $ref: '#/components/schemas/IceServer'
+          description: STUN/TURN server configuration for WebRTC peer connections
+
+    WebRTCSignal:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [offer, answer, candidate, bye]
+          description: WebRTC signaling message type
+          example: offer
+        sdp:
+          type: string
+          nullable: true
+          description: SDP string for offer/answer messages
+        candidate:
+          type: object
+          nullable: true
+          description: ICE candidate object
+          properties:
+            candidate:
+              type: string
+            sdpMid:
+              type: string
+              nullable: true
+            sdpMLineIndex:
+              type: integer
+              nullable: true
+
+    RoomEvent:
+      type: object
+      required: [eventType, actorId, actorDisplayName, payload, timestamp]
+      properties:
+        eventType:
+          type: string
+          enum: [USER_JOINED, USER_LEFT, CHAT_MESSAGE, LANGUAGE_CHANGE, CODE_RESULT]
+        actorId:
+          type: string
+          example: usr_01HXYZ1234ABCDEF
+        actorDisplayName:
+          type: string
+          example: Jane Doe
+        payload:
+          type: object
+          description: Event-specific data; shape varies by eventType
+          additionalProperties: true
+        timestamp:
+          type: string
+          format: date-time
+
+    RoomHistory:
+      type: object
+      required: [data, hasMore]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoomEvent'
+        nextCursor:
+          type: string
+          nullable: true
+        hasMore:
+          type: boolean
+
+    ErrorResponse:
+      type: object
+      required: [traceId, code, message, timestamp]
+      properties:
+        traceId:
+          type: string
+          example: trc_collab0001
+        code:
+          type: string
+          example: ROOM_FULL
+        message:
+          type: string
+          example: This room has reached its maximum participant limit.
+        timestamp:
+          type: string
+          format: date-time
+        details:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              issue:
+                type: string
+
+  responses:
+    BadRequest:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_ba0001
+            code: VALIDATION_ERROR
+            message: Request validation failed.
+            timestamp: "2024-11-05T14:30:00Z"
+            details:
+              - field: maxParticipants
+                issue: Must be between 2 and 10
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_au0001
+            code: UNAUTHORIZED
+            message: A valid access token is required.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_fb0001
+            code: FORBIDDEN
+            message: Only the room host can perform this action.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    NotFound:
+      description: Room not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_nf0001
+            code: ROOM_NOT_FOUND
+            message: No room exists with that code.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    Conflict:
+      description: Conflict — e.g., room full or already a participant
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_cf0001
+            code: ROOM_FULL
+            message: This room has reached its maximum participant limit.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 60
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_rl0001
+            code: RATE_LIMIT_EXCEEDED
+            message: Too many requests. Please slow down.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    InternalServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_is0001
+            code: INTERNAL_ERROR
+            message: An unexpected error occurred.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null

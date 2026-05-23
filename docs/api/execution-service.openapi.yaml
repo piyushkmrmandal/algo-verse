@@ -1,0 +1,960 @@
+openapi: 3.1.0
+
+info:
+  title: AlgoVerse Execution Service API
+  version: 1.0.0
+  description: |
+    Code execution and judging service for AlgoVerse. Handles submission queuing,
+    verdict computation, non-judged sandbox runs, quota management, and real-time
+    result streaming over WebSocket.
+
+    ## WebSocket — Real-time Submission Results
+
+    **Endpoint:** `ws://api.algoverse.io/execution/v1/ws/submissions/{id}`
+    **Secure (production):** `wss://api.algoverse.io/execution/v1/ws/submissions/{id}`
+
+    ### Connection Flow
+    1. Client connects with the access token as a query parameter or `Authorization` header:
+       `wss://api.algoverse.io/execution/v1/ws/submissions/{id}?token=<accessToken>`
+    2. Server sends an initial `STATUS_UPDATE` message with the current submission state.
+    3. As the submission is processed, the server streams `TEST_RESULT` messages for each test case.
+    4. When all test cases finish, the server sends a `COMPLETE` message with the final verdict.
+    5. If an irrecoverable error occurs, the server sends an `ERROR` message and closes the connection.
+    6. Client must send a `PING` frame every 30 seconds; server replies with `PONG`. If no ping is
+       received within 60 seconds the server closes the connection with code 4008.
+
+    ### Message Types
+
+    #### CLIENT → SERVER
+
+    | Type    | Description                      |
+    |---------|----------------------------------|
+    | `PING`  | Heartbeat keep-alive             |
+
+    #### SERVER → CLIENT
+
+    | Type            | Description                                         |
+    |-----------------|-----------------------------------------------------|
+    | `STATUS_UPDATE` | Submission status changed (PENDING → RUNNING → …)  |
+    | `TEST_RESULT`   | Individual test case result                         |
+    | `COMPLETE`      | Final verdict with aggregated stats                 |
+    | `ERROR`         | Non-retriable server error                          |
+
+    ### Message Envelope
+    All WebSocket messages are JSON with the structure:
+    ```json
+    {
+      "type": "<MESSAGE_TYPE>",
+      "submissionId": "<id>",
+      "payload": { ... },
+      "timestamp": "<ISO-8601>"
+    }
+    ```
+
+    ### Example Messages
+
+    **STATUS_UPDATE**
+    ```json
+    {
+      "type": "STATUS_UPDATE",
+      "submissionId": "sub_01HXYZ5555",
+      "payload": { "status": "RUNNING", "queuePosition": null },
+      "timestamp": "2024-11-05T15:01:02Z"
+    }
+    ```
+
+    **TEST_RESULT**
+    ```json
+    {
+      "type": "TEST_RESULT",
+      "submissionId": "sub_01HXYZ5555",
+      "payload": {
+        "testCaseId": "tc_01",
+        "passed": true,
+        "runtimeMs": 12,
+        "memoryMb": 14.2,
+        "stdin": "nums = [2,7,11,15], target = 9",
+        "stdout": "[0,1]",
+        "expectedOutput": "[0,1]",
+        "isHidden": false
+      },
+      "timestamp": "2024-11-05T15:01:03Z"
+    }
+    ```
+
+    **COMPLETE**
+    ```json
+    {
+      "type": "COMPLETE",
+      "submissionId": "sub_01HXYZ5555",
+      "payload": {
+        "verdict": "ACCEPTED",
+        "passedCount": 75,
+        "totalCount": 75,
+        "runtimeMs": 24,
+        "runtimePercentile": 92.3,
+        "memoryMb": 15.1,
+        "memoryPercentile": 88.7
+      },
+      "timestamp": "2024-11-05T15:01:04Z"
+    }
+    ```
+
+    **ERROR**
+    ```json
+    {
+      "type": "ERROR",
+      "submissionId": "sub_01HXYZ5555",
+      "payload": {
+        "code": "EXECUTION_TIMEOUT",
+        "message": "The submission exceeded the maximum allowed execution time."
+      },
+      "timestamp": "2024-11-05T15:01:05Z"
+    }
+    ```
+
+  contact:
+    name: AlgoVerse Platform Team
+    email: platform@algoverse.io
+
+servers:
+  - url: https://api.algoverse.io/execution/v1
+    description: Production REST
+  - url: https://staging-api.algoverse.io/execution/v1
+    description: Staging REST
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Submissions
+    description: Judged submission management
+  - name: Run
+    description: Non-judged sandbox execution
+  - name: Languages
+    description: Supported language metadata
+  - name: Quota
+    description: User execution quota
+
+paths:
+  /submissions:
+    post:
+      tags: [Submissions]
+      operationId: createSubmission
+      summary: Submit code for judging against all test cases
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSubmissionRequest'
+            example:
+              problemId: prb_01HXYZ0001TWOSUM
+              language: python3
+              code: |
+                class Solution:
+                    def twoSum(self, nums, target):
+                        seen = {}
+                        for i, v in enumerate(nums):
+                            if target - v in seen:
+                                return [seen[target - v], i]
+                            seen[v] = i
+      responses:
+        '202':
+          description: Submission accepted and queued
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionQueued'
+              example:
+                submissionId: sub_01HXYZ5555
+                status: PENDING
+                queuePosition: 3
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '402':
+          $ref: '#/components/responses/QuotaExhausted'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    get:
+      tags: [Submissions]
+      operationId: listSubmissions
+      summary: List the authenticated user's submissions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: problemId
+          in: query
+          description: Filter by problem ID
+          schema:
+            type: string
+          example: prb_01HXYZ0001TWOSUM
+        - name: status
+          in: query
+          description: Filter by verdict/status
+          schema:
+            type: string
+            enum: [PENDING, RUNNING, ACCEPTED, WRONG_ANSWER, TIME_LIMIT_EXCEEDED, MEMORY_LIMIT_EXCEEDED, RUNTIME_ERROR, COMPILE_ERROR, INTERNAL_ERROR]
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: Paginated submission list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSubmissions'
+              example:
+                data:
+                  - id: sub_01HXYZ5555
+                    problemId: prb_01HXYZ0001TWOSUM
+                    userId: usr_01HXYZ1234ABCDEF
+                    language: python3
+                    status: ACCEPTED
+                    verdict: ACCEPTED
+                    runtimeMs: 24
+                    runtimePercentile: 92.3
+                    memoryMb: 15.1
+                    memoryPercentile: 88.7
+                    passedCount: 75
+                    totalCount: 75
+                    createdAt: "2024-11-05T15:01:00Z"
+                    completedAt: "2024-11-05T15:01:04Z"
+                nextCursor: "Y3Vyc29yXzE3MDA5MjMwMDA="
+                total: 42
+                hasMore: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /submissions/{id}:
+    get:
+      tags: [Submissions]
+      operationId: getSubmission
+      summary: Get a submission with its full result
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/idParam'
+      responses:
+        '200':
+          description: Full submission detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Submission'
+              example:
+                id: sub_01HXYZ5555
+                problemId: prb_01HXYZ0001TWOSUM
+                userId: usr_01HXYZ1234ABCDEF
+                language: python3
+                code: |
+                  class Solution:
+                      def twoSum(self, nums, target):
+                          seen = {}
+                          for i, v in enumerate(nums):
+                              if target - v in seen:
+                                  return [seen[target - v], i]
+                              seen[v] = i
+                status: ACCEPTED
+                verdict: ACCEPTED
+                runtimeMs: 24
+                runtimePercentile: 92.3
+                memoryMb: 15.1
+                memoryPercentile: 88.7
+                passedCount: 75
+                totalCount: 75
+                compileError: null
+                createdAt: "2024-11-05T15:01:00Z"
+                completedAt: "2024-11-05T15:01:04Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /submissions/{id}/test-results:
+    get:
+      tags: [Submissions]
+      operationId: getSubmissionTestResults
+      summary: Get per-test-case results for a submission
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/idParam'
+      responses:
+        '200':
+          description: List of test case results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SubmissionTestResult'
+              example:
+                data:
+                  - testCaseId: tc_01
+                    passed: true
+                    runtimeMs: 10
+                    memoryMb: 14.1
+                    stdin: "nums = [2,7,11,15], target = 9"
+                    stdout: "[0,1]"
+                    expectedOutput: "[0,1]"
+                    stderr: null
+                    isHidden: false
+                  - testCaseId: tc_02
+                    passed: true
+                    runtimeMs: 8
+                    memoryMb: 13.9
+                    stdin: "nums = [3,2,4], target = 6"
+                    stdout: "[1,2]"
+                    expectedOutput: "[1,2]"
+                    stderr: null
+                    isHidden: false
+                  - testCaseId: tc_hidden_01
+                    passed: true
+                    runtimeMs: 12
+                    memoryMb: 14.5
+                    stdin: null
+                    stdout: null
+                    expectedOutput: null
+                    stderr: null
+                    isHidden: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /run:
+    post:
+      tags: [Run]
+      operationId: runCode
+      summary: Execute code in a sandbox without judging (custom stdin, not against test cases)
+      description: |
+        Non-judged execution for rapid iteration. Output is returned synchronously.
+        Maximum timeout is 10 seconds. Does not count against submission quota but
+        has its own rate limit of 30 runs per minute.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunRequest'
+            example:
+              code: |
+                nums = list(map(int, input().split()))
+                target = int(input())
+                seen = {}
+                for i, v in enumerate(nums):
+                    if target - v in seen:
+                        print(seen[target - v], i)
+                        break
+                    seen[v] = i
+              language: python3
+              stdin: "2 7 11 15\n9"
+              timeoutMs: 3000
+      responses:
+        '200':
+          description: Execution result
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionResult'
+              example:
+                stdout: "0 1\n"
+                stderr: ""
+                exitCode: 0
+                runtimeMs: 58
+                memoryMb: 9.3
+                status: SUCCESS
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '402':
+          $ref: '#/components/responses/QuotaExhausted'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /languages:
+    get:
+      tags: [Languages]
+      operationId: listLanguages
+      summary: List supported programming languages with runtime versions and limits
+      security: []
+      responses:
+        '200':
+          description: Language catalogue
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Language'
+              example:
+                data:
+                  - id: python3
+                    name: Python 3
+                    version: "3.12.3"
+                    timeLimitMultiplier: 3.0
+                    memoryLimitMb: 256
+                    enabled: true
+                  - id: java
+                    name: Java
+                    version: "21.0.3"
+                    timeLimitMultiplier: 2.0
+                    memoryLimitMb: 512
+                    enabled: true
+                  - id: cpp17
+                    name: C++ (GCC 13, C++17)
+                    version: "13.2.0"
+                    timeLimitMultiplier: 1.0
+                    memoryLimitMb: 256
+                    enabled: true
+                  - id: typescript
+                    name: TypeScript
+                    version: "5.4.5 / Node 22"
+                    timeLimitMultiplier: 2.5
+                    memoryLimitMb: 256
+                    enabled: true
+                  - id: go
+                    name: Go
+                    version: "1.22.3"
+                    timeLimitMultiplier: 1.5
+                    memoryLimitMb: 256
+                    enabled: true
+                  - id: rust
+                    name: Rust
+                    version: "1.78.0"
+                    timeLimitMultiplier: 1.0
+                    memoryLimitMb: 256
+                    enabled: true
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /quota:
+    get:
+      tags: [Quota]
+      operationId: getQuota
+      summary: Get the authenticated user's daily execution quota status
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Quota status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuotaStatus'
+              example:
+                dailyUsed: 18
+                dailyLimit: 100
+                resetsAt: "2024-11-06T00:00:00Z"
+                runDailyUsed: 47
+                runDailyLimit: 200
+                runResetsAt: "2024-11-06T00:00:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT access token. For WebSocket connections pass as query parameter:
+        `?token=<accessToken>`
+
+  headers:
+    X-RateLimit-Limit:
+      description: Maximum requests in the current window
+      schema:
+        type: integer
+        example: 60
+    X-RateLimit-Remaining:
+      description: Requests remaining
+      schema:
+        type: integer
+        example: 42
+    X-RateLimit-Reset:
+      description: UTC epoch seconds when window resets
+      schema:
+        type: integer
+        example: 1715000400
+
+  parameters:
+    idParam:
+      name: id
+      in: path
+      required: true
+      description: Resource ULID
+      schema:
+        type: string
+      example: sub_01HXYZ5555
+
+  schemas:
+    CreateSubmissionRequest:
+      type: object
+      required: [problemId, language, code]
+      properties:
+        problemId:
+          type: string
+          description: ID of the problem to judge against
+          example: prb_01HXYZ0001TWOSUM
+        language:
+          type: string
+          description: Language identifier from /languages
+          example: python3
+        code:
+          type: string
+          maxLength: 65536
+          description: Source code to submit
+
+    SubmissionQueued:
+      type: object
+      required: [submissionId, status]
+      properties:
+        submissionId:
+          type: string
+          example: sub_01HXYZ5555
+        status:
+          type: string
+          enum: [PENDING]
+          example: PENDING
+        queuePosition:
+          type: integer
+          nullable: true
+          description: Estimated position in the judge queue; null when processing immediately
+          example: 3
+
+    Submission:
+      type: object
+      required: [id, problemId, userId, language, status, createdAt]
+      properties:
+        id:
+          type: string
+          example: sub_01HXYZ5555
+        problemId:
+          type: string
+          example: prb_01HXYZ0001TWOSUM
+        userId:
+          type: string
+          example: usr_01HXYZ1234ABCDEF
+        language:
+          type: string
+          example: python3
+        code:
+          type: string
+          description: Source code (included only when requesting own submission)
+        status:
+          type: string
+          enum: [PENDING, RUNNING, ACCEPTED, WRONG_ANSWER, TIME_LIMIT_EXCEEDED, MEMORY_LIMIT_EXCEEDED, RUNTIME_ERROR, COMPILE_ERROR, INTERNAL_ERROR]
+          example: ACCEPTED
+        verdict:
+          type: string
+          nullable: true
+          enum: [ACCEPTED, WRONG_ANSWER, TIME_LIMIT_EXCEEDED, MEMORY_LIMIT_EXCEEDED, RUNTIME_ERROR, COMPILE_ERROR, INTERNAL_ERROR]
+          example: ACCEPTED
+        runtimeMs:
+          type: integer
+          nullable: true
+          description: Best-case runtime in milliseconds across test cases
+          example: 24
+        runtimePercentile:
+          type: number
+          format: float
+          nullable: true
+          description: Percentile rank vs. accepted solutions for this problem/language
+          example: 92.3
+        memoryMb:
+          type: number
+          format: float
+          nullable: true
+          description: Peak memory usage in megabytes
+          example: 15.1
+        memoryPercentile:
+          type: number
+          format: float
+          nullable: true
+          example: 88.7
+        passedCount:
+          type: integer
+          nullable: true
+          example: 75
+        totalCount:
+          type: integer
+          nullable: true
+          example: 75
+        compileError:
+          type: string
+          nullable: true
+          description: Compiler error output when status is COMPILE_ERROR
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-11-05T15:01:00Z"
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2024-11-05T15:01:04Z"
+
+    SubmissionTestResult:
+      type: object
+      required: [testCaseId, passed, isHidden]
+      properties:
+        testCaseId:
+          type: string
+          example: tc_01
+        passed:
+          type: boolean
+          example: true
+        runtimeMs:
+          type: integer
+          nullable: true
+          example: 10
+        memoryMb:
+          type: number
+          format: float
+          nullable: true
+          example: 14.1
+        stdin:
+          type: string
+          nullable: true
+          description: Input provided (null for hidden test cases)
+          example: "nums = [2,7,11,15], target = 9"
+        stdout:
+          type: string
+          nullable: true
+          description: Program output (null for hidden test cases)
+          example: "[0,1]"
+        expectedOutput:
+          type: string
+          nullable: true
+          description: Expected output (null for hidden test cases)
+          example: "[0,1]"
+        stderr:
+          type: string
+          nullable: true
+          description: Standard error output
+        isHidden:
+          type: boolean
+          example: false
+
+    RunRequest:
+      type: object
+      required: [code, language]
+      properties:
+        code:
+          type: string
+          maxLength: 65536
+        language:
+          type: string
+          example: python3
+        stdin:
+          type: string
+          maxLength: 4096
+          default: ""
+          description: Standard input to provide to the program
+        timeoutMs:
+          type: integer
+          minimum: 100
+          maximum: 10000
+          default: 5000
+          description: Maximum execution time in milliseconds (hard cap 10s)
+
+    ExecutionResult:
+      type: object
+      required: [stdout, stderr, exitCode, runtimeMs, memoryMb, status]
+      properties:
+        stdout:
+          type: string
+          description: Program's standard output (truncated at 100KB)
+        stderr:
+          type: string
+          description: Program's standard error (truncated at 10KB)
+        exitCode:
+          type: integer
+          example: 0
+        runtimeMs:
+          type: integer
+          description: Wall-clock execution time in milliseconds
+          example: 58
+        memoryMb:
+          type: number
+          format: float
+          description: Peak memory usage in megabytes
+          example: 9.3
+        status:
+          type: string
+          enum: [SUCCESS, RUNTIME_ERROR, TIME_LIMIT_EXCEEDED, MEMORY_LIMIT_EXCEEDED, COMPILE_ERROR]
+          example: SUCCESS
+
+    Language:
+      type: object
+      required: [id, name, version, timeLimitMultiplier, memoryLimitMb, enabled]
+      properties:
+        id:
+          type: string
+          description: Language identifier used in submission/run requests
+          example: python3
+        name:
+          type: string
+          description: Human-readable display name
+          example: Python 3
+        version:
+          type: string
+          description: Compiler/interpreter version
+          example: "3.12.3"
+        timeLimitMultiplier:
+          type: number
+          format: float
+          description: |
+            Multiplier applied to a problem's base time limit.
+            e.g., 3.0 means Python gets 3x the C++ time limit.
+          example: 3.0
+        memoryLimitMb:
+          type: integer
+          description: Maximum memory in megabytes for this language
+          example: 256
+        enabled:
+          type: boolean
+          description: Whether the language is currently available for submissions
+          example: true
+
+    QuotaStatus:
+      type: object
+      required: [dailyUsed, dailyLimit, resetsAt, runDailyUsed, runDailyLimit, runResetsAt]
+      properties:
+        dailyUsed:
+          type: integer
+          description: Judged submissions used today
+          example: 18
+        dailyLimit:
+          type: integer
+          description: Maximum judged submissions per day
+          example: 100
+        resetsAt:
+          type: string
+          format: date-time
+          description: When the submission quota resets
+          example: "2024-11-06T00:00:00Z"
+        runDailyUsed:
+          type: integer
+          description: Non-judged runs used today
+          example: 47
+        runDailyLimit:
+          type: integer
+          description: Maximum non-judged runs per day
+          example: 200
+        runResetsAt:
+          type: string
+          format: date-time
+          example: "2024-11-06T00:00:00Z"
+
+    PaginatedSubmissions:
+      type: object
+      required: [data, total, hasMore]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Submission'
+        nextCursor:
+          type: string
+          nullable: true
+        total:
+          type: integer
+        hasMore:
+          type: boolean
+
+    ErrorResponse:
+      type: object
+      required: [traceId, code, message, timestamp]
+      properties:
+        traceId:
+          type: string
+          example: trc_exec_001
+        code:
+          type: string
+          example: QUOTA_EXHAUSTED
+        message:
+          type: string
+          example: Daily submission quota exceeded.
+        timestamp:
+          type: string
+          format: date-time
+        details:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              issue:
+                type: string
+
+  responses:
+    BadRequest:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_ba0001
+            code: VALIDATION_ERROR
+            message: Request validation failed.
+            timestamp: "2024-11-05T14:30:00Z"
+            details:
+              - field: language
+                issue: Unsupported language identifier
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_au0001
+            code: UNAUTHORIZED
+            message: A valid access token is required.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    Forbidden:
+      description: Access denied
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_fb0001
+            code: FORBIDDEN
+            message: You are not allowed to access this submission.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_nf0001
+            code: NOT_FOUND
+            message: Submission not found.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    QuotaExhausted:
+      description: Daily execution quota exceeded
+      headers:
+        Retry-After:
+          description: Seconds until quota resets
+          schema:
+            type: integer
+            example: 32400
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_qe0001
+            code: QUOTA_EXHAUSTED
+            message: You have used all 100 daily submissions. Quota resets at midnight UTC.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 60
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_rl0001
+            code: RATE_LIMIT_EXCEEDED
+            message: Too many requests. Please slow down.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    InternalServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_is0001
+            code: INTERNAL_ERROR
+            message: An unexpected error occurred.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null

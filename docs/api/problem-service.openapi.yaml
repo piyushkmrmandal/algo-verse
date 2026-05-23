@@ -1,0 +1,1318 @@
+openapi: 3.1.0
+
+info:
+  title: AlgoVerse Problem Service API
+  version: 1.0.0
+  description: |
+    Problem catalogue, editorial, solutions, and topic management for AlgoVerse.
+    Provides full-text search, cursor-based pagination, and admin CRUD operations.
+  contact:
+    name: AlgoVerse Platform Team
+    email: platform@algoverse.io
+
+servers:
+  - url: https://api.algoverse.io/problems/v1
+    description: Production
+  - url: https://staging-api.algoverse.io/problems/v1
+    description: Staging
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Problems
+    description: Problem listing and detail retrieval
+  - name: Editorials
+    description: Problem editorial content
+  - name: Solutions
+    description: Community and user solutions
+  - name: Topics
+    description: Topic/tag taxonomy
+  - name: Admin
+    description: Admin-only problem management (requires ADMIN role)
+
+paths:
+  /problems:
+    get:
+      tags: [Problems]
+      operationId: listProblems
+      summary: List problems with filtering, search, and cursor pagination
+      security:
+        - bearerAuth: []
+        - {}
+      parameters:
+        - name: cursor
+          in: query
+          description: Opaque cursor for the next page (from previous response)
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Number of problems to return per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: difficulty
+          in: query
+          description: Filter by difficulty level
+          schema:
+            type: string
+            enum: [EASY, MEDIUM, HARD]
+        - name: tags
+          in: query
+          description: Filter by topic/tag slugs (AND logic)
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+          example: [array, hash-table]
+        - name: companies
+          in: query
+          description: Filter by company slugs
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+          example: [google, meta]
+        - name: status
+          in: query
+          description: Filter by the authenticated user's solve status (requires auth)
+          schema:
+            type: string
+            enum: [UNSOLVED, ATTEMPTED, SOLVED]
+        - name: search
+          in: query
+          description: Full-text search across problem title and description
+          schema:
+            type: string
+            maxLength: 200
+          example: two sum
+        - name: sortBy
+          in: query
+          description: Field to sort results by
+          schema:
+            type: string
+            enum: [acceptance, difficulty, created]
+            default: created
+        - name: order
+          in: query
+          description: Sort direction
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Paginated problem list
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProblems'
+              example:
+                data:
+                  - id: prb_01HXYZ0001TWOSUM
+                    slug: two-sum
+                    title: Two Sum
+                    difficulty: EASY
+                    tags: [array, hash-table]
+                    companies: [google, amazon, apple]
+                    acceptanceRate: 51.4
+                    totalSubmissions: 14200000
+                    status: SOLVED
+                    isPremium: false
+                    createdAt: "2019-06-01T00:00:00Z"
+                  - id: prb_01HXYZ0002ADDTWONUMBERS
+                    slug: add-two-numbers
+                    title: Add Two Numbers
+                    difficulty: MEDIUM
+                    tags: [linked-list, math, recursion]
+                    companies: [amazon, microsoft]
+                    acceptanceRate: 41.2
+                    totalSubmissions: 9800000
+                    status: ATTEMPTED
+                    isPremium: false
+                    createdAt: "2019-06-01T00:00:00Z"
+                nextCursor: "Y3Vyc29yXzE3MDA5MjMwMDA="
+                total: 2847
+                hasMore: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /problems/random:
+    get:
+      tags: [Problems]
+      operationId: getRandomProblem
+      summary: Get a random problem optionally filtered by difficulty and tags
+      security:
+        - bearerAuth: []
+        - {}
+      parameters:
+        - name: difficulty
+          in: query
+          description: Restrict to specific difficulties
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [EASY, MEDIUM, HARD]
+          style: form
+          explode: true
+        - name: tags
+          in: query
+          description: Restrict to problems with all of these tag slugs
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: A random problem matching the filters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                id: prb_01HXYZ0001TWOSUM
+                slug: two-sum
+                title: Two Sum
+                difficulty: EASY
+                tags: [array, hash-table]
+                companies: [google, amazon, apple]
+                acceptanceRate: 51.4
+                totalSubmissions: 14200000
+                status: null
+                isPremium: false
+                createdAt: "2019-06-01T00:00:00Z"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /problems/{slug}:
+    get:
+      tags: [Problems]
+      operationId: getProblem
+      summary: Get full problem detail including templates and hints
+      security:
+        - bearerAuth: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/slugParam'
+      responses:
+        '200':
+          description: Problem detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+              example:
+                id: prb_01HXYZ0001TWOSUM
+                slug: two-sum
+                title: Two Sum
+                difficulty: EASY
+                tags: [array, hash-table]
+                companies: [google, amazon, apple]
+                acceptanceRate: 51.4
+                totalSubmissions: 14200000
+                status: SOLVED
+                isPremium: false
+                createdAt: "2019-06-01T00:00:00Z"
+                description: |
+                  Given an array of integers `nums` and an integer `target`, return *indices* of the two numbers such that they add up to `target`.
+                  You may assume that each input would have **exactly one solution**, and you may not use the same element twice.
+                  You can return the answer in any order.
+                constraints:
+                  - "2 <= nums.length <= 10^4"
+                  - "-10^9 <= nums[i] <= 10^9"
+                  - "-10^9 <= target <= 10^9"
+                  - "Only one valid answer exists."
+                examples:
+                  - input: "nums = [2,7,11,15], target = 9"
+                    output: "[0,1]"
+                    explanation: "Because nums[0] + nums[1] == 9, we return [0, 1]."
+                  - input: "nums = [3,2,4], target = 6"
+                    output: "[1,2]"
+                    explanation: ""
+                hints:
+                  - "A brute force approach is O(n²). Can you do better?"
+                  - "Think about what you need to look up efficiently."
+                  - "A hash map gives O(1) lookups."
+                templates:
+                  - language: python3
+                    code: |
+                      class Solution:
+                          def twoSum(self, nums: List[int], target: int) -> List[int]:
+                              pass
+                  - language: java
+                    code: |
+                      class Solution {
+                          public int[] twoSum(int[] nums, int target) {
+
+                          }
+                      }
+                  - language: typescript
+                    code: |
+                      function twoSum(nums: number[], target: number): number[] {
+
+                      };
+                testCases:
+                  - id: tc_01
+                    input: "nums = [2,7,11,15], target = 9"
+                    expectedOutput: "[0,1]"
+                    isHidden: false
+                  - id: tc_02
+                    input: "nums = [3,2,4], target = 6"
+                    expectedOutput: "[1,2]"
+                    isHidden: false
+                  - id: tc_hidden
+                    input: "[HIDDEN]"
+                    expectedOutput: "[HIDDEN]"
+                    isHidden: true
+                timeLimit: 2000
+                memoryLimit: 128
+                solutionCount: 342891
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /problems/{slug}/editorial:
+    get:
+      tags: [Editorials]
+      operationId: getEditorial
+      summary: Get the editorial for a problem
+      security:
+        - bearerAuth: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/slugParam'
+      responses:
+        '200':
+          description: Editorial content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Editorial'
+              example:
+                id: edt_01HXYZ0001TWOSUM
+                problemSlug: two-sum
+                approaches:
+                  - title: Brute Force
+                    complexity:
+                      time: "O(n²)"
+                      space: "O(1)"
+                    content: "Iterate over every pair of elements and check if their sum equals target."
+                    code:
+                      python3: |
+                        class Solution:
+                            def twoSum(self, nums, target):
+                                for i in range(len(nums)):
+                                    for j in range(i + 1, len(nums)):
+                                        if nums[i] + nums[j] == target:
+                                            return [i, j]
+                  - title: Hash Map (Optimal)
+                    complexity:
+                      time: "O(n)"
+                      space: "O(n)"
+                    content: "Store each number in a hash map as we iterate. For each element, check if the complement exists."
+                    code:
+                      python3: |
+                        class Solution:
+                            def twoSum(self, nums, target):
+                                seen = {}
+                                for i, val in enumerate(nums):
+                                    comp = target - val
+                                    if comp in seen:
+                                        return [seen[comp], i]
+                                    seen[val] = i
+                publishedAt: "2024-01-10T09:00:00Z"
+                updatedAt: "2024-03-22T11:00:00Z"
+                authorId: usr_admin_01
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /problems/{slug}/solutions:
+    get:
+      tags: [Solutions]
+      operationId: listSolutions
+      summary: List community solutions for a problem
+      security:
+        - bearerAuth: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/slugParam'
+        - name: language
+          in: query
+          description: Filter by programming language
+          schema:
+            type: string
+            example: python3
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [upvotes, newest]
+            default: upvotes
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: Paginated solutions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSolutions'
+              example:
+                data:
+                  - id: sol_01HXYZ9999
+                    problemSlug: two-sum
+                    authorId: usr_01HABC123
+                    authorDisplayName: AlgoWizard
+                    language: python3
+                    code: |
+                      class Solution:
+                          def twoSum(self, nums, target):
+                              seen = {}
+                              for i, v in enumerate(nums):
+                                  if target - v in seen:
+                                      return [seen[target - v], i]
+                                  seen[v] = i
+                    upvotes: 1482
+                    createdAt: "2024-01-15T12:00:00Z"
+                nextCursor: "Y3Vyc29yXzE3MDA5MjM1MDA="
+                total: 342891
+                hasMore: true
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags: [Solutions]
+      operationId: postSolution
+      summary: Post a solution for a problem
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/slugParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostSolutionRequest'
+            example:
+              language: python3
+              code: |
+                class Solution:
+                    def twoSum(self, nums, target):
+                        seen = {}
+                        for i, v in enumerate(nums):
+                            if target - v in seen:
+                                return [seen[target - v], i]
+                            seen[v] = i
+      responses:
+        '201':
+          description: Solution posted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Solution'
+              example:
+                id: sol_01HXYZ8888
+                problemSlug: two-sum
+                authorId: usr_01HXYZ1234ABCDEF
+                authorDisplayName: Jane Doe
+                language: python3
+                code: |
+                  class Solution:
+                      def twoSum(self, nums, target):
+                          seen = {}
+                          for i, v in enumerate(nums):
+                              if target - v in seen:
+                                  return [seen[target - v], i]
+                              seen[v] = i
+                upvotes: 0
+                createdAt: "2024-11-05T15:00:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /topics:
+    get:
+      tags: [Topics]
+      operationId: listTopics
+      summary: Get the full topic taxonomy tree
+      security: []
+      responses:
+        '200':
+          description: Topic tree
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Topic'
+              example:
+                data:
+                  - id: top_01_DS
+                    slug: data-structures
+                    name: Data Structures
+                    problemCount: 412
+                    children:
+                      - id: top_01_DS_ARRAY
+                        slug: array
+                        name: Array
+                        problemCount: 198
+                        children: []
+                      - id: top_01_DS_HT
+                        slug: hash-table
+                        name: Hash Table
+                        problemCount: 142
+                        children: []
+                      - id: top_01_DS_LL
+                        slug: linked-list
+                        name: Linked List
+                        problemCount: 87
+                        children: []
+                  - id: top_02_ALGO
+                    slug: algorithms
+                    name: Algorithms
+                    problemCount: 789
+                    children:
+                      - id: top_02_ALGO_DP
+                        slug: dynamic-programming
+                        name: Dynamic Programming
+                        problemCount: 231
+                        children: []
+                      - id: top_02_ALGO_GR
+                        slug: graph
+                        name: Graph
+                        problemCount: 177
+                        children: []
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /topics/{slug}/problems:
+    get:
+      tags: [Topics]
+      operationId: listTopicProblems
+      summary: List problems under a specific topic
+      security:
+        - bearerAuth: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/slugParam'
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: difficulty
+          in: query
+          schema:
+            type: string
+            enum: [EASY, MEDIUM, HARD]
+      responses:
+        '200':
+          description: Paginated problems for the topic
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProblems'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /admin/problems:
+    post:
+      tags: [Admin]
+      operationId: adminCreateProblem
+      summary: Create a new problem (ADMIN only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminCreateProblemRequest'
+            example:
+              slug: reverse-linked-list
+              title: Reverse Linked List
+              difficulty: EASY
+              tags: [linked-list, recursion]
+              companies: [amazon, facebook]
+              description: "Given the `head` of a singly linked list, reverse the list, and return *the reversed list*."
+              constraints:
+                - "The number of nodes in the list is the range [0, 5000]."
+                - "-5000 <= Node.val <= 5000"
+              hints:
+                - "How would you reverse an array? Apply similar logic."
+              timeLimit: 2000
+              memoryLimit: 128
+      responses:
+        '201':
+          description: Problem created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /admin/problems/{slug}:
+    put:
+      tags: [Admin]
+      operationId: adminUpdateProblem
+      summary: Update an existing problem (ADMIN only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/slugParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUpdateProblemRequest'
+      responses:
+        '200':
+          description: Problem updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags: [Admin]
+      operationId: adminDeleteProblem
+      summary: Soft-delete a problem (ADMIN only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/slugParam'
+      responses:
+        '204':
+          description: Problem soft-deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /admin/problems/{slug}/test-cases:
+    post:
+      tags: [Admin]
+      operationId: adminAddTestCase
+      summary: Add a test case to a problem (ADMIN only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/slugParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminAddTestCaseRequest'
+            example:
+              input: "nums = [1,2,3,4,5], target = 9"
+              expectedOutput: "[3,4]"
+              isHidden: true
+              explanation: "Edge case: target is at the end of the array"
+      responses:
+        '201':
+          description: Test case added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestCase'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /admin/problems/{slug}/editorial:
+    put:
+      tags: [Admin]
+      operationId: adminUpsertEditorial
+      summary: Create or update the editorial for a problem (ADMIN only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/slugParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUpsertEditorialRequest'
+      responses:
+        '200':
+          description: Editorial upserted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Editorial'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  headers:
+    X-RateLimit-Limit:
+      description: Maximum number of requests allowed in the current window
+      schema:
+        type: integer
+        example: 200
+    X-RateLimit-Remaining:
+      description: Requests remaining in the current window
+      schema:
+        type: integer
+        example: 165
+    X-RateLimit-Reset:
+      description: UTC epoch seconds when the rate-limit window resets
+      schema:
+        type: integer
+        example: 1715000400
+
+  parameters:
+    slugParam:
+      name: slug
+      in: path
+      required: true
+      description: URL-safe problem or topic slug
+      schema:
+        type: string
+        pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+      example: two-sum
+
+  schemas:
+    Problem:
+      type: object
+      required: [id, slug, title, difficulty, tags, acceptanceRate, totalSubmissions, isPremium, createdAt]
+      properties:
+        id:
+          type: string
+          example: prb_01HXYZ0001TWOSUM
+        slug:
+          type: string
+          example: two-sum
+        title:
+          type: string
+          example: Two Sum
+        difficulty:
+          type: string
+          enum: [EASY, MEDIUM, HARD]
+          example: EASY
+        tags:
+          type: array
+          items:
+            type: string
+          example: [array, hash-table]
+        companies:
+          type: array
+          items:
+            type: string
+          example: [google, amazon]
+        acceptanceRate:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+          example: 51.4
+        totalSubmissions:
+          type: integer
+          example: 14200000
+        status:
+          type: string
+          nullable: true
+          enum: [UNSOLVED, ATTEMPTED, SOLVED]
+          description: Authenticated user's status; null if unauthenticated
+          example: SOLVED
+        isPremium:
+          type: boolean
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+          example: "2019-06-01T00:00:00Z"
+
+    ProblemDetail:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          required: [description, constraints, examples, templates, testCases, timeLimit, memoryLimit]
+          properties:
+            description:
+              type: string
+              description: Markdown-formatted problem statement
+            constraints:
+              type: array
+              items:
+                type: string
+              description: Problem constraints as individual strings
+            examples:
+              type: array
+              items:
+                $ref: '#/components/schemas/ProblemExample'
+            hints:
+              type: array
+              items:
+                type: string
+              description: Progressive hints revealed one at a time
+            templates:
+              type: array
+              items:
+                $ref: '#/components/schemas/ProblemTemplate'
+            testCases:
+              type: array
+              items:
+                $ref: '#/components/schemas/TestCase'
+            timeLimit:
+              type: integer
+              description: Time limit in milliseconds
+              example: 2000
+            memoryLimit:
+              type: integer
+              description: Memory limit in megabytes
+              example: 128
+            solutionCount:
+              type: integer
+              example: 342891
+
+    ProblemExample:
+      type: object
+      required: [input, output]
+      properties:
+        input:
+          type: string
+          example: "nums = [2,7,11,15], target = 9"
+        output:
+          type: string
+          example: "[0,1]"
+        explanation:
+          type: string
+          nullable: true
+          example: "Because nums[0] + nums[1] == 9, we return [0, 1]."
+
+    ProblemTemplate:
+      type: object
+      required: [language, code]
+      properties:
+        language:
+          type: string
+          example: python3
+        code:
+          type: string
+          description: Starter code scaffold for this language
+
+    TestCase:
+      type: object
+      required: [id, isHidden]
+      properties:
+        id:
+          type: string
+          example: tc_01
+        input:
+          type: string
+          description: Input string; "[HIDDEN]" for hidden test cases accessed by non-admin
+          example: "nums = [2,7,11,15], target = 9"
+        expectedOutput:
+          type: string
+          description: Expected output; "[HIDDEN]" for hidden test cases
+          example: "[0,1]"
+        explanation:
+          type: string
+          nullable: true
+        isHidden:
+          type: boolean
+          description: Hidden test cases only expose input/output to ADMIN users
+          example: false
+
+    Topic:
+      type: object
+      required: [id, slug, name, problemCount]
+      properties:
+        id:
+          type: string
+          example: top_01_DS
+        slug:
+          type: string
+          example: data-structures
+        name:
+          type: string
+          example: Data Structures
+        problemCount:
+          type: integer
+          example: 412
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/Topic'
+          default: []
+
+    Editorial:
+      type: object
+      required: [id, problemSlug, approaches, publishedAt, updatedAt]
+      properties:
+        id:
+          type: string
+          example: edt_01HXYZ0001TWOSUM
+        problemSlug:
+          type: string
+          example: two-sum
+        approaches:
+          type: array
+          items:
+            $ref: '#/components/schemas/EditorialApproach'
+        publishedAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        authorId:
+          type: string
+          nullable: true
+
+    EditorialApproach:
+      type: object
+      required: [title, complexity, content]
+      properties:
+        title:
+          type: string
+          example: Hash Map (Optimal)
+        complexity:
+          type: object
+          required: [time, space]
+          properties:
+            time:
+              type: string
+              example: "O(n)"
+            space:
+              type: string
+              example: "O(n)"
+        content:
+          type: string
+          description: Markdown explanation of the approach
+        code:
+          type: object
+          description: Map of language slug to code snippet
+          additionalProperties:
+            type: string
+          example:
+            python3: |
+              class Solution:
+                  def twoSum(self, nums, target):
+                      seen = {}
+                      for i, val in enumerate(nums):
+                          if target - val in seen:
+                              return [seen[target - val], i]
+                          seen[val] = i
+
+    Solution:
+      type: object
+      required: [id, problemSlug, authorId, authorDisplayName, language, code, upvotes, createdAt]
+      properties:
+        id:
+          type: string
+          example: sol_01HXYZ9999
+        problemSlug:
+          type: string
+          example: two-sum
+        authorId:
+          type: string
+          example: usr_01HABC123
+        authorDisplayName:
+          type: string
+          example: AlgoWizard
+        language:
+          type: string
+          example: python3
+        code:
+          type: string
+        upvotes:
+          type: integer
+          example: 1482
+        createdAt:
+          type: string
+          format: date-time
+
+    PaginatedProblems:
+      type: object
+      required: [data, total, hasMore]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Problem'
+        nextCursor:
+          type: string
+          nullable: true
+          description: Pass as `cursor` param in next request; null when no more pages
+        total:
+          type: integer
+          description: Total number of matching problems
+        hasMore:
+          type: boolean
+
+    PaginatedSolutions:
+      type: object
+      required: [data, total, hasMore]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Solution'
+        nextCursor:
+          type: string
+          nullable: true
+        total:
+          type: integer
+        hasMore:
+          type: boolean
+
+    PostSolutionRequest:
+      type: object
+      required: [language, code]
+      properties:
+        language:
+          type: string
+          example: python3
+        code:
+          type: string
+          maxLength: 65536
+
+    AdminCreateProblemRequest:
+      type: object
+      required: [slug, title, difficulty, tags, description, constraints, timeLimit, memoryLimit]
+      properties:
+        slug:
+          type: string
+          pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+        title:
+          type: string
+        difficulty:
+          type: string
+          enum: [EASY, MEDIUM, HARD]
+        tags:
+          type: array
+          items:
+            type: string
+        companies:
+          type: array
+          items:
+            type: string
+          default: []
+        description:
+          type: string
+        constraints:
+          type: array
+          items:
+            type: string
+        hints:
+          type: array
+          items:
+            type: string
+          default: []
+        timeLimit:
+          type: integer
+          description: Milliseconds
+        memoryLimit:
+          type: integer
+          description: Megabytes
+        isPremium:
+          type: boolean
+          default: false
+
+    AdminUpdateProblemRequest:
+      type: object
+      description: All fields are optional for partial updates
+      properties:
+        title:
+          type: string
+        difficulty:
+          type: string
+          enum: [EASY, MEDIUM, HARD]
+        tags:
+          type: array
+          items:
+            type: string
+        companies:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        constraints:
+          type: array
+          items:
+            type: string
+        hints:
+          type: array
+          items:
+            type: string
+        timeLimit:
+          type: integer
+        memoryLimit:
+          type: integer
+        isPremium:
+          type: boolean
+
+    AdminAddTestCaseRequest:
+      type: object
+      required: [input, expectedOutput, isHidden]
+      properties:
+        input:
+          type: string
+        expectedOutput:
+          type: string
+        isHidden:
+          type: boolean
+        explanation:
+          type: string
+          nullable: true
+
+    AdminUpsertEditorialRequest:
+      type: object
+      required: [approaches]
+      properties:
+        approaches:
+          type: array
+          items:
+            $ref: '#/components/schemas/EditorialApproach'
+
+    ErrorResponse:
+      type: object
+      required: [traceId, code, message, timestamp]
+      properties:
+        traceId:
+          type: string
+          example: trc_4c3f2a1b9e8d7c6b
+        code:
+          type: string
+          example: NOT_FOUND
+        message:
+          type: string
+          example: The requested problem could not be found.
+        timestamp:
+          type: string
+          format: date-time
+        details:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              issue:
+                type: string
+
+  responses:
+    BadRequest:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_ba0001
+            code: VALIDATION_ERROR
+            message: Request validation failed.
+            timestamp: "2024-11-05T14:30:00Z"
+            details:
+              - field: difficulty
+                issue: Must be one of EASY, MEDIUM, HARD
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_au0001
+            code: UNAUTHORIZED
+            message: A valid access token is required.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_fb0001
+            code: FORBIDDEN
+            message: ADMIN role is required for this operation.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_nf0001
+            code: NOT_FOUND
+            message: The requested resource could not be found.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    Conflict:
+      description: Duplicate resource conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_cf0001
+            code: SLUG_ALREADY_EXISTS
+            message: A problem with this slug already exists.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 60
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_rl0001
+            code: RATE_LIMIT_EXCEEDED
+            message: Too many requests. Please slow down.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    InternalServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_is0001
+            code: INTERNAL_ERROR
+            message: An unexpected error occurred.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null

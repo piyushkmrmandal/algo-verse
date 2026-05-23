@@ -1,0 +1,29 @@
+{
+  "name": "@algoverse/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "nx": {
+    "tags": ["scope:web"],
+    "targets": {
+      "serve": {
+        "command": "vite serve --config vite.config.ts"
+      },
+      "build": {
+        "command": "vite build --config vite.config.ts"
+      },
+      "preview": {
+        "command": "vite preview --config vite.config.ts"
+      },
+      "typecheck": {
+        "command": "tsc --noEmit -p tsconfig.json"
+      },
+      "lint": {
+        "command": "eslint src --ext .ts,.tsx --max-warnings 0"
+      },
+      "test": {
+        "command": "vitest run"
+      }
+    }
+  }
+}

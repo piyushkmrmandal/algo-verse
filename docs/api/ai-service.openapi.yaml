@@ -1,0 +1,1134 @@
+openapi: 3.1.0
+
+info:
+  title: AlgoVerse AI Service API
+  version: 1.0.0
+  description: |
+    AI-powered learning features for AlgoVerse: contextual hints, code review,
+    concept explanations, skill modelling, personalised recommendations,
+    adaptive learning paths, and conversational tutoring.
+
+    ## Server-Sent Events (SSE) — /conversation Endpoint
+
+    The `POST /conversation` endpoint streams the AI tutor's response using
+    [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events).
+
+    ### Request
+    Set `Accept: text/event-stream` in addition to `Content-Type: application/json`.
+
+    ### Event Stream Format
+    Each event follows the standard SSE format:
+
+    ```
+    id: <event-id>
+    event: <event-type>
+    data: <JSON-encoded payload>
+
+    ```
+
+    ### Event Types
+
+    | Event Type  | Description                                              |
+    |-------------|----------------------------------------------------------|
+    | `delta`     | Incremental text chunk from the AI response              |
+    | `metadata`  | Non-streaming metadata (threadId, tokenUsage, model)     |
+    | `done`      | Stream complete; payload includes full assembled message |
+    | `error`     | Fatal stream error; connection will close after this     |
+
+    ### Example Stream
+
+    ```
+    id: evt_001
+    event: metadata
+    data: {"threadId":"thr_01HXYZ9ABC","model":"algoverse-tutor-v2","conversationId":"cnv_01HXYZ8888"}
+
+    id: evt_002
+    event: delta
+    data: {"text":"Great question! Let’s think about the time complexity here."}
+
+    id: evt_003
+    event: delta
+    data: {"text":" A brute-force approach would check every pair, giving O(n²)."}
+
+    id: evt_004
+    event: delta
+    data: {"text":" But can we do better with a hash map?"}
+
+    id: evt_005
+    event: done
+    data: {"fullText":"Great question! Let’s think about the time complexity here. A brute-force approach would check every pair, giving O(n²). But can we do better with a hash map?","tokenUsage":{"inputTokens":312,"outputTokens":47}}
+    ```
+
+    ### Error Event
+
+    ```
+    id: evt_err
+    event: error
+    data: {"code":"MODEL_OVERLOADED","message":"AI service is temporarily unavailable. Please retry in a moment."}
+    ```
+
+  contact:
+    name: AlgoVerse Platform Team
+    email: platform@algoverse.io
+
+servers:
+  - url: https://api.algoverse.io/ai/v1
+    description: Production
+  - url: https://staging-api.algoverse.io/ai/v1
+    description: Staging
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Hints
+    description: Progressive contextual hints for problems
+  - name: CodeReview
+    description: Automated code quality and complexity analysis
+  - name: Explain
+    description: Concept explanations adapted to user level
+  - name: SkillModel
+    description: User knowledge state and skill tracking
+  - name: Recommendations
+    description: Personalised problem and topic recommendations
+  - name: LearningPath
+    description: Goal-based adaptive learning plans
+  - name: Conversation
+    description: Streaming AI tutor conversations
+
+paths:
+  /hints:
+    post:
+      tags: [Hints]
+      operationId: getHint
+      summary: Get a progressive hint for a problem
+      description: |
+        Returns a hint calibrated to the requested level (1 = nudge, 5 = near-solution).
+        Hint usage is tracked per user per problem to personalise future hints.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HintRequest'
+            example:
+              problemId: prb_01HXYZ0001TWOSUM
+              submissionId: sub_01HXYZ5555
+              hintLevel: 2
+              currentCode: |
+                class Solution:
+                    def twoSum(self, nums, target):
+                        for i in range(len(nums)):
+                            for j in range(i+1, len(nums)):
+                                if nums[i] + nums[j] == target:
+                                    return [i, j]
+              language: python3
+      responses:
+        '200':
+          description: Contextual hint
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hint'
+              example:
+                hintText: |
+                  Your current O(n²) solution is correct but slow. Think about what data structure
+                  allows you to check in O(1) whether the complement of each element exists.
+                  What if you stored elements you've already seen along with their indices?
+                hintLevel: 2
+                nextHintAvailable: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /code-review:
+    post:
+      tags: [CodeReview]
+      operationId: reviewCode
+      summary: Analyse code for issues, style, complexity, and patterns
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CodeReviewRequest'
+            example:
+              submissionId: sub_01HXYZ5555
+              problemId: prb_01HXYZ0001TWOSUM
+              language: python3
+              code: |
+                class Solution:
+                    def twoSum(self, nums, target):
+                        seen = {}
+                        for i, v in enumerate(nums):
+                            if target - v in seen:
+                                return [seen[target - v], i]
+                            seen[v] = i
+      responses:
+        '200':
+          description: Code review report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeReview'
+              example:
+                id: rev_01HXYZABCD
+                submissionId: sub_01HXYZ5555
+                qualityScore: 94
+                complexityAnalysis:
+                  timeComplexity: "O(n)"
+                  spaceComplexity: "O(n)"
+                  explanation: "Single pass with a hash map gives linear time and space."
+                patternDetected: hash-map-complement
+                issues: []
+                suggestions:
+                  - type: STYLE
+                    line: 4
+                    message: "Consider using a more descriptive variable name than `v`; `num` or `val` improves readability."
+                    severity: INFO
+                  - type: ROBUSTNESS
+                    line: null
+                    message: "No guard for an empty `nums` list, though LeetCode guarantees len >= 2."
+                    severity: INFO
+                createdAt: "2024-11-05T15:05:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /explain:
+    post:
+      tags: [Explain]
+      operationId: explainConcept
+      summary: Get a levelled explanation of a DSA concept
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExplainRequest'
+            example:
+              concept: dynamic-programming
+              context: "I understand recursion and memoization but am confused about bottom-up DP."
+              userLevel: INTERMEDIATE
+      responses:
+        '200':
+          description: Concept explanation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExplainResponse'
+              example:
+                explanation: |
+                  Bottom-up dynamic programming (tabulation) builds your answer iteratively from
+                  the smallest subproblems up to the original problem. Unlike memoisation, which
+                  starts from the top and caches results as it recurses down, tabulation fills a
+                  table cell by cell using only previously computed cells — so you never hit the
+                  call stack limit and often achieve better cache performance.
+                examples:
+                  - title: Fibonacci (bottom-up)
+                    code: |
+                      def fib(n):
+                          if n <= 1: return n
+                          dp = [0] * (n + 1)
+                          dp[1] = 1
+                          for i in range(2, n + 1):
+                              dp[i] = dp[i-1] + dp[i-2]
+                          return dp[n]
+                    explanation: "We fill dp[0..n] left to right; each cell only needs the two before it."
+                relatedConcepts:
+                  - memoization
+                  - recursion
+                  - divide-and-conquer
+                  - coin-change
+                  - longest-common-subsequence
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /skill-model:
+    get:
+      tags: [SkillModel]
+      operationId: getSkillModel
+      summary: Retrieve the authenticated user's knowledge state across DSA skills
+      description: |
+        Returns a Bayesian Knowledge Tracing (BKT) skill model. `pKnow` is the
+        probability [0,1] that the user has mastered the skill. `trend` reflects
+        recent direction of change.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User skill model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillModel'
+              example:
+                userId: usr_01HXYZ1234ABCDEF
+                updatedAt: "2024-11-05T15:00:00Z"
+                skills:
+                  - skillId: sk_array
+                    name: Array
+                    pKnow: 0.91
+                    level: ADVANCED
+                    trend: STABLE
+                  - skillId: sk_hash_table
+                    name: Hash Table
+                    pKnow: 0.87
+                    level: ADVANCED
+                    trend: IMPROVING
+                  - skillId: sk_dynamic_programming
+                    name: Dynamic Programming
+                    pKnow: 0.43
+                    level: BEGINNER
+                    trend: IMPROVING
+                  - skillId: sk_graph
+                    name: Graph
+                    pKnow: 0.61
+                    level: INTERMEDIATE
+                    trend: STABLE
+                  - skillId: sk_tree
+                    name: Tree
+                    pKnow: 0.72
+                    level: INTERMEDIATE
+                    trend: IMPROVING
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /recommendations:
+    get:
+      tags: [Recommendations]
+      operationId: getRecommendations
+      summary: Get personalised problem or topic recommendations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: count
+          in: query
+          description: Number of recommendations to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            default: 5
+        - name: type
+          in: query
+          description: Recommendation type
+          schema:
+            type: string
+            enum: [PROBLEM, TOPIC]
+            default: PROBLEM
+      responses:
+        '200':
+          description: Personalised recommendations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Recommendation'
+              example:
+                data:
+                  - type: PROBLEM
+                    targetId: prb_01HXYZ0100CLIMBSTAIRS
+                    targetSlug: climbing-stairs
+                    targetTitle: Climbing Stairs
+                    reason: "Strengthen your Dynamic Programming foundation — this classic DP problem closely matches your current skill gap."
+                    confidenceScore: 0.88
+                    estimatedDifficultyFit: EASY
+                  - type: PROBLEM
+                    targetId: prb_01HXYZ0200HOUSEROBBER
+                    targetSlug: house-robber
+                    targetTitle: House Robber
+                    reason: "After Climbing Stairs, House Robber is the natural next step to generalise 1D DP."
+                    confidenceScore: 0.82
+                    estimatedDifficultyFit: MEDIUM
+                  - type: TOPIC
+                    targetId: top_02_ALGO_DP
+                    targetSlug: dynamic-programming
+                    targetTitle: Dynamic Programming
+                    reason: "Your DP skill (43%) is the largest gap relative to your overall profile. Focused practice here will unlock many hard problems."
+                    confidenceScore: 0.95
+                    estimatedDifficultyFit: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /learning-path:
+    post:
+      tags: [LearningPath]
+      operationId: createLearningPath
+      summary: Generate a personalised learning path towards a goal
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLearningPathRequest'
+            example:
+              goal: "Crack FAANG software engineering interviews"
+              targetRole: Software Engineer (L4/L5)
+              timeAvailableHoursPerWeek: 10
+      responses:
+        '201':
+          description: Learning path created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningPath'
+              example:
+                id: lp_01HXYZPATH01
+                userId: usr_01HXYZ1234ABCDEF
+                goal: "Crack FAANG software engineering interviews"
+                targetRole: Software Engineer (L4/L5)
+                estimatedWeeks: 16
+                createdAt: "2024-11-05T15:10:00Z"
+                updatedAt: "2024-11-05T15:10:00Z"
+                phases:
+                  - phaseNumber: 1
+                    title: Arrays & Hash Maps Mastery
+                    description: "Solidify the most common interview patterns."
+                    estimatedWeeks: 3
+                    topics: [array, hash-table, two-pointers, sliding-window]
+                    problems:
+                      - slug: two-sum
+                        title: Two Sum
+                        difficulty: EASY
+                        priority: 1
+                      - slug: best-time-to-buy-and-sell-stock
+                        title: Best Time to Buy and Sell Stock
+                        difficulty: EASY
+                        priority: 2
+                      - slug: contains-duplicate
+                        title: Contains Duplicate
+                        difficulty: EASY
+                        priority: 3
+                  - phaseNumber: 2
+                    title: Trees & Graphs
+                    description: "BFS, DFS, and common tree traversals."
+                    estimatedWeeks: 4
+                    topics: [binary-tree, graph, bfs, dfs]
+                    problems:
+                      - slug: binary-tree-inorder-traversal
+                        title: Binary Tree Inorder Traversal
+                        difficulty: EASY
+                        priority: 1
+                      - slug: number-of-islands
+                        title: Number of Islands
+                        difficulty: MEDIUM
+                        priority: 2
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /learning-path/{id}:
+    get:
+      tags: [LearningPath]
+      operationId: getLearningPath
+      summary: Retrieve a learning path by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: lp_01HXYZPATH01
+      responses:
+        '200':
+          description: Learning path detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningPath'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /conversation:
+    post:
+      tags: [Conversation]
+      operationId: sendConversationMessage
+      summary: Send a message to the AI tutor — streams the response via SSE
+      description: |
+        Opens a Server-Sent Events stream. Set `Accept: text/event-stream`.
+        Pass `threadId` to continue an existing conversation; omit to start a new one.
+        See the top-level SSE documentation for event types and format.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversationRequest'
+            example:
+              problemId: prb_01HXYZ0001TWOSUM
+              message: "Why is my hash map solution still O(n²)? I thought lookups were O(1)."
+              threadId: thr_01HXYZ9ABC
+      responses:
+        '200':
+          description: SSE stream of AI tutor response chunks
+          headers:
+            Content-Type:
+              schema:
+                type: string
+                example: text/event-stream
+            Cache-Control:
+              schema:
+                type: string
+                example: no-cache
+            X-Accel-Buffering:
+              schema:
+                type: string
+                example: "no"
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: |
+                  Server-Sent Events stream. Each event follows the format:
+
+                  ```
+                  id: <event-id>\n
+                  event: <delta|metadata|done|error>\n
+                  data: <JSON payload>\n
+                  \n
+                  ```
+              example: |
+                id: evt_001
+                event: metadata
+                data: {"threadId":"thr_01HXYZ9ABC","model":"algoverse-tutor-v2","conversationId":"cnv_01HXYZ8888"}
+
+                id: evt_002
+                event: delta
+                data: {"text":"Hash map lookups are O(1) on average, so the issue is elsewhere."}
+
+                id: evt_003
+                event: delta
+                data: {"text":" Check whether you're rebuilding the map inside the loop — that would make it O(n²)."}
+
+                id: evt_004
+                event: done
+                data: {"fullText":"Hash map lookups are O(1) on average, so the issue is elsewhere. Check whether you're rebuilding the map inside the loop — that would make it O(n²).","tokenUsage":{"inputTokens":289,"outputTokens":38}}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /conversations:
+    get:
+      tags: [Conversation]
+      operationId: listConversations
+      summary: List the authenticated user's conversation history
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Conversation list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Conversation'
+              example:
+                data:
+                  - id: cnv_01HXYZ8888
+                    threadId: thr_01HXYZ9ABC
+                    problemId: prb_01HXYZ0001TWOSUM
+                    problemTitle: Two Sum
+                    messageCount: 6
+                    lastMessageAt: "2024-11-05T15:12:00Z"
+                    createdAt: "2024-11-05T14:55:00Z"
+                  - id: cnv_01HXYZ7777
+                    threadId: thr_01HXYZ8DEF
+                    problemId: prb_01HXYZ0002ADDTWONUMBERS
+                    problemTitle: Add Two Numbers
+                    messageCount: 3
+                    lastMessageAt: "2024-11-04T20:30:00Z"
+                    createdAt: "2024-11-04T20:15:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  headers:
+    X-RateLimit-Limit:
+      description: Maximum requests allowed in the current window
+      schema:
+        type: integer
+        example: 60
+    X-RateLimit-Remaining:
+      description: Requests remaining
+      schema:
+        type: integer
+        example: 55
+    X-RateLimit-Reset:
+      description: UTC epoch seconds when the window resets
+      schema:
+        type: integer
+        example: 1715000400
+
+  schemas:
+    HintRequest:
+      type: object
+      required: [problemId, hintLevel, language]
+      properties:
+        problemId:
+          type: string
+          example: prb_01HXYZ0001TWOSUM
+        submissionId:
+          type: string
+          nullable: true
+          description: Optional; used to personalise the hint to the user's specific code
+          example: sub_01HXYZ5555
+        hintLevel:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: "1 = subtle nudge, 5 = near-complete solution guidance"
+          example: 2
+        currentCode:
+          type: string
+          nullable: true
+          description: User's current code for context-aware hints
+        language:
+          type: string
+          example: python3
+
+    Hint:
+      type: object
+      required: [hintText, hintLevel, nextHintAvailable]
+      properties:
+        hintText:
+          type: string
+          description: Markdown-formatted hint text
+        hintLevel:
+          type: integer
+          minimum: 1
+          maximum: 5
+        nextHintAvailable:
+          type: boolean
+          description: Whether a higher-level hint exists
+
+    CodeReviewRequest:
+      type: object
+      required: [code, language, problemId]
+      properties:
+        submissionId:
+          type: string
+          nullable: true
+          example: sub_01HXYZ5555
+        code:
+          type: string
+          maxLength: 65536
+        language:
+          type: string
+          example: python3
+        problemId:
+          type: string
+          example: prb_01HXYZ0001TWOSUM
+
+    CodeReview:
+      type: object
+      required: [id, qualityScore, complexityAnalysis, issues, suggestions, createdAt]
+      properties:
+        id:
+          type: string
+          example: rev_01HXYZABCD
+        submissionId:
+          type: string
+          nullable: true
+        qualityScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Composite quality score (0–100)
+          example: 94
+        complexityAnalysis:
+          type: object
+          required: [timeComplexity, spaceComplexity, explanation]
+          properties:
+            timeComplexity:
+              type: string
+              example: "O(n)"
+            spaceComplexity:
+              type: string
+              example: "O(n)"
+            explanation:
+              type: string
+              example: "Single pass with a hash map gives linear time and space."
+        patternDetected:
+          type: string
+          nullable: true
+          description: Recognised algorithmic pattern slug
+          example: hash-map-complement
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewIssue'
+          description: Bugs or correctness problems
+        suggestions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewIssue'
+          description: Style and improvement suggestions
+        createdAt:
+          type: string
+          format: date-time
+
+    ReviewIssue:
+      type: object
+      required: [type, message, severity]
+      properties:
+        type:
+          type: string
+          enum: [BUG, STYLE, PERFORMANCE, ROBUSTNESS, SECURITY]
+        line:
+          type: integer
+          nullable: true
+          description: 1-indexed source line number (null if not line-specific)
+        message:
+          type: string
+        severity:
+          type: string
+          enum: [ERROR, WARNING, INFO]
+
+    ExplainRequest:
+      type: object
+      required: [concept, userLevel]
+      properties:
+        concept:
+          type: string
+          description: DSA concept slug or free-text topic
+          example: dynamic-programming
+        context:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: Additional context from the user
+        userLevel:
+          type: string
+          enum: [BEGINNER, INTERMEDIATE, ADVANCED]
+          example: INTERMEDIATE
+
+    ExplainResponse:
+      type: object
+      required: [explanation, examples, relatedConcepts]
+      properties:
+        explanation:
+          type: string
+          description: Markdown-formatted explanation adapted to userLevel
+        examples:
+          type: array
+          items:
+            type: object
+            required: [title, code, explanation]
+            properties:
+              title:
+                type: string
+                example: Fibonacci (bottom-up)
+              code:
+                type: string
+              explanation:
+                type: string
+        relatedConcepts:
+          type: array
+          items:
+            type: string
+          example: [memoization, recursion, divide-and-conquer]
+
+    SkillModel:
+      type: object
+      required: [userId, updatedAt, skills]
+      properties:
+        userId:
+          type: string
+          example: usr_01HXYZ1234ABCDEF
+        updatedAt:
+          type: string
+          format: date-time
+        skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/Skill'
+
+    Skill:
+      type: object
+      required: [skillId, name, pKnow, level, trend]
+      properties:
+        skillId:
+          type: string
+          example: sk_dynamic_programming
+        name:
+          type: string
+          example: Dynamic Programming
+        pKnow:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Bayesian probability of mastery
+          example: 0.43
+        level:
+          type: string
+          enum: [BEGINNER, INTERMEDIATE, ADVANCED]
+          example: BEGINNER
+        trend:
+          type: string
+          enum: [IMPROVING, STABLE, DECLINING]
+          example: IMPROVING
+
+    Recommendation:
+      type: object
+      required: [type, targetId, targetSlug, targetTitle, reason, confidenceScore]
+      properties:
+        type:
+          type: string
+          enum: [PROBLEM, TOPIC]
+        targetId:
+          type: string
+          example: prb_01HXYZ0100CLIMBSTAIRS
+        targetSlug:
+          type: string
+          example: climbing-stairs
+        targetTitle:
+          type: string
+          example: Climbing Stairs
+        reason:
+          type: string
+          description: Natural-language explanation of why this was recommended
+        confidenceScore:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.88
+        estimatedDifficultyFit:
+          type: string
+          nullable: true
+          enum: [EASY, MEDIUM, HARD]
+          example: EASY
+
+    CreateLearningPathRequest:
+      type: object
+      required: [goal, timeAvailableHoursPerWeek]
+      properties:
+        goal:
+          type: string
+          maxLength: 500
+          example: "Crack FAANG software engineering interviews"
+        targetRole:
+          type: string
+          nullable: true
+          maxLength: 200
+          example: "Software Engineer (L4/L5)"
+        timeAvailableHoursPerWeek:
+          type: integer
+          minimum: 1
+          maximum: 80
+          example: 10
+
+    LearningPath:
+      type: object
+      required: [id, userId, goal, estimatedWeeks, phases, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          example: lp_01HXYZPATH01
+        userId:
+          type: string
+          example: usr_01HXYZ1234ABCDEF
+        goal:
+          type: string
+          example: "Crack FAANG software engineering interviews"
+        targetRole:
+          type: string
+          nullable: true
+          example: "Software Engineer (L4/L5)"
+        estimatedWeeks:
+          type: integer
+          example: 16
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        phases:
+          type: array
+          items:
+            $ref: '#/components/schemas/LearningPhase'
+
+    LearningPhase:
+      type: object
+      required: [phaseNumber, title, estimatedWeeks, topics, problems]
+      properties:
+        phaseNumber:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: Arrays & Hash Maps Mastery
+        description:
+          type: string
+          nullable: true
+        estimatedWeeks:
+          type: integer
+          example: 3
+        topics:
+          type: array
+          items:
+            type: string
+          example: [array, hash-table]
+        problems:
+          type: array
+          items:
+            type: object
+            required: [slug, title, difficulty, priority]
+            properties:
+              slug:
+                type: string
+              title:
+                type: string
+              difficulty:
+                type: string
+                enum: [EASY, MEDIUM, HARD]
+              priority:
+                type: integer
+                description: Lower is higher priority
+
+    ConversationRequest:
+      type: object
+      required: [message]
+      properties:
+        problemId:
+          type: string
+          nullable: true
+          description: Problem context for the conversation
+          example: prb_01HXYZ0001TWOSUM
+        message:
+          type: string
+          maxLength: 4000
+          description: User's message to the AI tutor
+        threadId:
+          type: string
+          nullable: true
+          description: Pass to continue an existing thread; omit to start a new one
+          example: thr_01HXYZ9ABC
+
+    Conversation:
+      type: object
+      required: [id, threadId, messageCount, lastMessageAt, createdAt]
+      properties:
+        id:
+          type: string
+          example: cnv_01HXYZ8888
+        threadId:
+          type: string
+          example: thr_01HXYZ9ABC
+        problemId:
+          type: string
+          nullable: true
+          example: prb_01HXYZ0001TWOSUM
+        problemTitle:
+          type: string
+          nullable: true
+          example: Two Sum
+        messageCount:
+          type: integer
+          example: 6
+        lastMessageAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      required: [traceId, code, message, timestamp]
+      properties:
+        traceId:
+          type: string
+          example: trc_ai0001
+        code:
+          type: string
+          example: VALIDATION_ERROR
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        details:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              issue:
+                type: string
+
+  responses:
+    BadRequest:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_ba0001
+            code: VALIDATION_ERROR
+            message: hintLevel must be between 1 and 5.
+            timestamp: "2024-11-05T14:30:00Z"
+            details:
+              - field: hintLevel
+                issue: Must be an integer between 1 and 5
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_au0001
+            code: UNAUTHORIZED
+            message: A valid access token is required.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    Forbidden:
+      description: Access denied
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_fb0001
+            code: FORBIDDEN
+            message: You do not have access to this resource.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_nf0001
+            code: NOT_FOUND
+            message: The requested resource could not be found.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 60
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_rl0001
+            code: RATE_LIMIT_EXCEEDED
+            message: AI service rate limit reached. Please wait before sending more requests.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    InternalServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_is0001
+            code: INTERNAL_ERROR
+            message: An unexpected error occurred.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null

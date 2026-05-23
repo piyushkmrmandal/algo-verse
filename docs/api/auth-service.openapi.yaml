@@ -1,0 +1,895 @@
+openapi: 3.1.0
+
+info:
+  title: AlgoVerse Auth Service API
+  version: 1.0.0
+  description: |
+    Authentication and user management service for AlgoVerse DSA learning platform.
+    Handles registration, login, OAuth, MFA, token refresh, and profile management.
+  contact:
+    name: AlgoVerse Platform Team
+    email: platform@algoverse.io
+
+servers:
+  - url: https://api.algoverse.io/auth/v1
+    description: Production
+  - url: https://staging-api.algoverse.io/auth/v1
+    description: Staging
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Authentication
+    description: Registration, login, and OAuth flows
+  - name: Tokens
+    description: Token refresh and revocation
+  - name: MFA
+    description: Multi-factor authentication management
+  - name: Profile
+    description: User profile management
+  - name: Password
+    description: Password reset flows
+
+paths:
+  /register:
+    post:
+      tags: [Authentication]
+      operationId: register
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              email: jane.doe@example.com
+              password: "Str0ng!Pass#2024"
+              displayName: Jane Doe
+      responses:
+        '201':
+          description: User registered successfully
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              example:
+                userId: usr_01HXYZ1234ABCDEF
+                email: jane.doe@example.com
+                accessToken: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3JfMDFIWFlaM...
+                refreshToken: rt_8f2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o
+                expiresIn: 3600
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /login:
+    post:
+      tags: [Authentication]
+      operationId: login
+      summary: Authenticate with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: jane.doe@example.com
+              password: "Str0ng!Pass#2024"
+      responses:
+        '200':
+          description: Login successful
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              example:
+                userId: usr_01HXYZ1234ABCDEF
+                email: jane.doe@example.com
+                accessToken: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3JfMDFIWFlaM...
+                refreshToken: rt_8f2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o
+                expiresIn: 3600
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /oauth/{provider}:
+    post:
+      tags: [Authentication]
+      operationId: oauthLogin
+      summary: Authenticate via OAuth provider (Google or GitHub)
+      security: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          description: OAuth provider identifier
+          schema:
+            type: string
+            enum: [google, github]
+          example: google
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthRequest'
+            example:
+              code: "4/0AcvDMrCQ8h7t3..."
+              redirectUri: "https://app.algoverse.io/oauth/callback"
+      responses:
+        '200':
+          description: OAuth login successful
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              example:
+                userId: usr_01HXYZ9876GHIJKL
+                email: jane.doe@gmail.com
+                accessToken: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3JfMDFIWFla...
+                refreshToken: rt_9a8b7c6d5e4f3g2h1i0j9k8l7m6n5o4p
+                expiresIn: 3600
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /refresh:
+    post:
+      tags: [Tokens]
+      operationId: refreshToken
+      summary: Refresh an access token using a refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+            example:
+              refreshToken: rt_8f2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o
+      responses:
+        '200':
+          description: Tokens refreshed successfully
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokens'
+              example:
+                accessToken: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3JfMDFIWFla...
+                refreshToken: rt_newtoken2a3b4c5d6e7f8g9h0i1j2k3l4
+                expiresIn: 3600
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /logout:
+    post:
+      tags: [Tokens]
+      operationId: logout
+      summary: Revoke the current session's refresh token
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+            example:
+              refreshToken: rt_8f2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o
+      responses:
+        '204':
+          description: Logged out successfully
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /mfa/enable:
+    post:
+      tags: [MFA]
+      operationId: enableMfa
+      summary: Initiate TOTP MFA setup — returns secret and QR code
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: MFA setup initiated
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaSetupResponse'
+              example:
+                secret: JBSWY3DPEHPK3PXP
+                qrCodeUrl: "https://api.algoverse.io/auth/v1/mfa/qr/usr_01HXYZ1234ABCDEF?token=eyJ..."
+                backupCodes:
+                  - "8472-1956"
+                  - "3018-7264"
+                  - "5509-3841"
+                  - "1234-5678"
+                  - "9101-1121"
+                  - "3141-5926"
+                  - "5358-9793"
+                  - "2384-6264"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /mfa/verify:
+    post:
+      tags: [MFA]
+      operationId: verifyMfa
+      summary: Verify a TOTP code to complete MFA enrollment or login
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaVerifyRequest'
+            example:
+              totp: "847291"
+      responses:
+        '200':
+          description: TOTP verification result
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaVerifyResponse'
+              example:
+                verified: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /me:
+    get:
+      tags: [Profile]
+      operationId: getMe
+      summary: Retrieve the authenticated user's profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+              example:
+                id: usr_01HXYZ1234ABCDEF
+                email: jane.doe@example.com
+                displayName: Jane Doe
+                avatarUrl: "https://cdn.algoverse.io/avatars/usr_01HXYZ1234ABCDEF.webp"
+                role: USER
+                emailVerified: true
+                mfaEnabled: false
+                createdAt: "2024-03-15T10:22:00Z"
+                updatedAt: "2024-11-01T08:45:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    patch:
+      tags: [Profile]
+      operationId: updateMe
+      summary: Update the authenticated user's profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+            example:
+              displayName: Jane D.
+              avatarUrl: "https://cdn.algoverse.io/avatars/usr_01HXYZ1234ABCDEF_v2.webp"
+      responses:
+        '200':
+          description: Profile updated
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+              example:
+                id: usr_01HXYZ1234ABCDEF
+                email: jane.doe@example.com
+                displayName: Jane D.
+                avatarUrl: "https://cdn.algoverse.io/avatars/usr_01HXYZ1234ABCDEF_v2.webp"
+                role: USER
+                emailVerified: true
+                mfaEnabled: false
+                createdAt: "2024-03-15T10:22:00Z"
+                updatedAt: "2024-11-05T14:30:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags: [Profile]
+      operationId: deleteMe
+      summary: Permanently delete the authenticated user's account
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteAccountRequest'
+            example:
+              password: "Str0ng!Pass#2024"
+      responses:
+        '204':
+          description: Account deleted
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /password/reset-request:
+    post:
+      tags: [Password]
+      operationId: requestPasswordReset
+      summary: Request a password reset email
+      description: Always returns 204 to prevent email enumeration attacks.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequestBody'
+            example:
+              email: jane.doe@example.com
+      responses:
+        '204':
+          description: Reset email dispatched (if account exists)
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /password/reset:
+    post:
+      tags: [Password]
+      operationId: resetPassword
+      summary: Complete the password reset using a token from email
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetBody'
+            example:
+              token: "prt_abc123def456ghi789jkl012mno345pqr"
+              newPassword: "N3w!Str0ng#Pass2024"
+      responses:
+        '204':
+          description: Password reset successfully
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT access token obtained from /login, /register, or /oauth/{provider}.
+        Include as: `Authorization: Bearer <token>`
+
+  headers:
+    X-RateLimit-Limit:
+      description: Maximum number of requests allowed in the current window
+      schema:
+        type: integer
+        example: 100
+    X-RateLimit-Remaining:
+      description: Number of requests remaining in the current window
+      schema:
+        type: integer
+        example: 87
+    X-RateLimit-Reset:
+      description: UTC epoch seconds when the rate-limit window resets
+      schema:
+        type: integer
+        example: 1715000400
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password, displayName]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+          description: User's email address
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 128
+          description: Password — must contain uppercase, lowercase, digit, and symbol
+        displayName:
+          type: string
+          minLength: 2
+          maxLength: 50
+          description: Public display name
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    OAuthRequest:
+      type: object
+      required: [code, redirectUri]
+      properties:
+        code:
+          type: string
+          description: Authorization code from the OAuth provider
+        redirectUri:
+          type: string
+          format: uri
+          description: Redirect URI that was used to obtain the code
+
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+          description: Opaque refresh token issued at login
+
+    LogoutRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+          description: Refresh token to revoke
+
+    MfaVerifyRequest:
+      type: object
+      required: [totp]
+      properties:
+        totp:
+          type: string
+          pattern: '^\d{6}$'
+          description: 6-digit TOTP code from authenticator app
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+          minLength: 2
+          maxLength: 50
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+
+    DeleteAccountRequest:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+          format: password
+          description: Current password to confirm account deletion
+
+    PasswordResetRequestBody:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+
+    PasswordResetBody:
+      type: object
+      required: [token, newPassword]
+      properties:
+        token:
+          type: string
+          description: Password reset token from email link
+        newPassword:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 128
+
+    AuthResponse:
+      type: object
+      required: [userId, email, accessToken, refreshToken, expiresIn]
+      properties:
+        userId:
+          type: string
+          description: Unique user identifier (ULID)
+          example: usr_01HXYZ1234ABCDEF
+        email:
+          type: string
+          format: email
+          example: jane.doe@example.com
+        accessToken:
+          type: string
+          description: JWT access token
+        refreshToken:
+          type: string
+          description: Opaque refresh token (rotate on each use)
+        expiresIn:
+          type: integer
+          description: Access token lifetime in seconds
+          example: 3600
+
+    AuthTokens:
+      type: object
+      required: [accessToken, refreshToken, expiresIn]
+      properties:
+        accessToken:
+          type: string
+          description: New JWT access token
+        refreshToken:
+          type: string
+          description: New opaque refresh token
+        expiresIn:
+          type: integer
+          description: Access token lifetime in seconds
+          example: 3600
+
+    MfaSetupResponse:
+      type: object
+      required: [secret, qrCodeUrl, backupCodes]
+      properties:
+        secret:
+          type: string
+          description: Base32-encoded TOTP secret for manual entry
+          example: JBSWY3DPEHPK3PXP
+        qrCodeUrl:
+          type: string
+          format: uri
+          description: URL of the QR code image to scan with an authenticator app
+        backupCodes:
+          type: array
+          items:
+            type: string
+            pattern: '^\d{4}-\d{4}$'
+          minItems: 8
+          maxItems: 8
+          description: One-time backup codes for account recovery
+
+    MfaVerifyResponse:
+      type: object
+      required: [verified]
+      properties:
+        verified:
+          type: boolean
+          description: True if the TOTP code was valid
+
+    UserProfile:
+      type: object
+      required: [id, email, displayName, role, emailVerified, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          description: User ULID
+          example: usr_01HXYZ1234ABCDEF
+        email:
+          type: string
+          format: email
+          example: jane.doe@example.com
+        displayName:
+          type: string
+          example: Jane Doe
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+          example: "https://cdn.algoverse.io/avatars/usr_01HXYZ1234ABCDEF.webp"
+        role:
+          type: string
+          enum: [USER, ADMIN, MODERATOR]
+          description: Platform role
+          example: USER
+        emailVerified:
+          type: boolean
+          example: true
+        mfaEnabled:
+          type: boolean
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-03-15T10:22:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2024-11-01T08:45:00Z"
+
+    ErrorResponse:
+      type: object
+      required: [traceId, code, message, timestamp]
+      properties:
+        traceId:
+          type: string
+          description: Distributed trace identifier for support
+          example: trc_4c3f2a1b9e8d7c6b
+        code:
+          type: string
+          description: Machine-readable error code
+          example: INVALID_CREDENTIALS
+        message:
+          type: string
+          description: Human-readable error description
+          example: The provided email or password is incorrect.
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-11-05T14:30:00Z"
+        details:
+          type: array
+          nullable: true
+          description: Field-level validation errors
+          items:
+            type: object
+            required: [field, issue]
+            properties:
+              field:
+                type: string
+                example: password
+              issue:
+                type: string
+                example: Must contain at least one uppercase letter
+
+  responses:
+    BadRequest:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_4c3f2a1b9e8d7c6b
+            code: VALIDATION_ERROR
+            message: One or more request fields are invalid.
+            timestamp: "2024-11-05T14:30:00Z"
+            details:
+              - field: email
+                issue: Must be a valid email address
+              - field: password
+                issue: Must be at least 8 characters
+
+    Unauthorized:
+      description: Missing or invalid authentication credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_9e8d7c6b4c3f2a1b
+            code: INVALID_CREDENTIALS
+            message: Authentication failed. Check your credentials and try again.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    Forbidden:
+      description: Authenticated but not authorized for this action
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_1a2b3c4d5e6f7g8h
+            code: FORBIDDEN
+            message: You do not have permission to perform this action.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    Conflict:
+      description: Resource already exists (e.g., email taken)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_2b3c4d5e6f7g8h9i
+            code: EMAIL_ALREADY_EXISTS
+            message: An account with this email address already exists.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          $ref: '#/components/headers/X-RateLimit-Limit'
+        X-RateLimit-Remaining:
+          $ref: '#/components/headers/X-RateLimit-Remaining'
+        X-RateLimit-Reset:
+          $ref: '#/components/headers/X-RateLimit-Reset'
+        Retry-After:
+          description: Seconds to wait before retrying
+          schema:
+            type: integer
+            example: 60
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_3c4d5e6f7g8h9i0j
+            code: RATE_LIMIT_EXCEEDED
+            message: Too many requests. Please wait before retrying.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null
+
+    InternalServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            traceId: trc_4d5e6f7g8h9i0j1k
+            code: INTERNAL_ERROR
+            message: An unexpected error occurred. Our team has been notified.
+            timestamp: "2024-11-05T14:30:00Z"
+            details: null

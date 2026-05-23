@@ -1,0 +1,1052 @@
+---
+# =============================================================================
+# AlgoVerse — Kafka Topic Configuration & Cluster Manifests
+#
+# Files in this document (separated by ---):
+#   1. ConfigMap: kafka-topics-config
+#      Contains kafka-topics.sh commands for all 13 AlgoVerse topics.
+#
+#   2. Job: kafka-topics-init
+#      One-shot Kubernetes Job that runs kafka-topics.sh commands on cluster init.
+#
+#   3. Kafka (Strimzi CRD): algoverse-kafka-cluster
+#      3-broker Kafka cluster with ZooKeeper, TLS, SCRAM-SHA-512, Cruise Control.
+#
+# Prerequisites:
+#   - Strimzi Operator >= 0.40.0 installed in the same namespace
+#   - StorageClass "gp3-ssd" available (AWS EBS gp3)
+#   - Namespace: algoverse-platform
+# =============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-topics-config
+  namespace: algoverse-platform
+  labels:
+    app.kubernetes.io/name: kafka-topics-config
+    app.kubernetes.io/component: kafka
+    app.kubernetes.io/part-of: algoverse
+data:
+  # ---------------------------------------------------------------------------
+  # create-topics.sh
+  # Executed by the kafka-topics-init Job below.
+  # All topics use:
+  #   - replication.factor=3  (across 3 brokers)
+  #   - min.insync.replicas=2 (survive 1 broker loss)
+  #   - compression.type=lz4  (balanced CPU vs. throughput)
+  #   - max.message.bytes set per topic
+  # ---------------------------------------------------------------------------
+  create-topics.sh: |
+    #!/bin/bash
+    set -euo pipefail
+
+    BOOTSTRAP="${KAFKA_BOOTSTRAP_SERVERS:-algoverse-kafka-cluster-kafka-bootstrap.algoverse-platform.svc.cluster.local:9093}"
+    COMMAND_CONFIG="/opt/kafka/config/command.properties"
+
+    echo "[INFO] Kafka bootstrap: $BOOTSTRAP"
+    echo "[INFO] Starting topic creation..."
+
+    # Utility: create topic only if it does not already exist
+    create_topic() {
+      local name="$1"
+      local partitions="$2"
+      local retention_ms="$3"
+      local max_message_bytes="$4"
+      shift 4
+      local extra_configs=("$@")
+
+      echo "[INFO] Ensuring topic: $name (partitions=$partitions, retention=${retention_ms}ms)"
+
+      # Check if topic exists
+      if kafka-topics.sh \
+          --bootstrap-server "$BOOTSTRAP" \
+          --command-config   "$COMMAND_CONFIG" \
+          --list 2>/dev/null | grep -qx "$name"; then
+        echo "[SKIP] Topic $name already exists."
+        return 0
+      fi
+
+      # Build config string
+      local config_args="retention.ms=${retention_ms},compression.type=lz4,max.message.bytes=${max_message_bytes},min.insync.replicas=2"
+      for extra in "${extra_configs[@]}"; do
+        config_args="${config_args},${extra}"
+      done
+
+      kafka-topics.sh \
+        --bootstrap-server  "$BOOTSTRAP"    \
+        --command-config    "$COMMAND_CONFIG" \
+        --create            \
+        --topic             "$name"          \
+        --partitions        "$partitions"    \
+        --replication-factor 3              \
+        --config            "retention.ms=${retention_ms}"         \
+        --config            "compression.type=lz4"                 \
+        --config            "max.message.bytes=${max_message_bytes}" \
+        --config            "min.insync.replicas=2"
+
+      echo "[OK] Created topic: $name"
+    }
+
+    # -------------------------------------------------------------------------
+    # 1. algoverse.submissions.created
+    #    partitions=24, key=userId, retention=7d
+    # -------------------------------------------------------------------------
+    create_topic "algoverse.submissions.created" \
+      24 \
+      604800000 \
+      1048576
+
+    # -------------------------------------------------------------------------
+    # 2. algoverse.submissions.judged
+    #    partitions=24, key=submissionId, retention=30d
+    # -------------------------------------------------------------------------
+    create_topic "algoverse.submissions.judged" \
+      24 \
+      2592000000 \
+      2097152
+
+    # -------------------------------------------------------------------------
+    # 3. algoverse.users.registered
+    #    partitions=6, key=userId, retention=30d
+    # -------------------------------------------------------------------------
+    create_topic "algoverse.users.registered" \
+      6 \
+      2592000000 \
+      524288
+
+    # -------------------------------------------------------------------------
+    # 4. algoverse.users.xp-updated
+    #    partitions=12, key=userId, retention=7d
+    # -------------------------------------------------------------------------
+    create_topic "algoverse.users.xp-updated" \
+      12 \
+      604800000 \
+      524288
+
+    # -------------------------------------------------------------------------
+    # 5. algoverse.streaks.updated
+    #    partitions=12, key=userId, retention=7d
+    # -------------------------------------------------------------------------
+    create_topic "algoverse.streaks.updated" \
+      12 \
+      604800000 \
+      524288
+
+    # -------------------------------------------------------------------------
+    # 6. algoverse.badges.earned
+    #    partitions=6, key=userId, retention=30d
+    # -------------------------------------------------------------------------
+    create_topic "algoverse.badges.earned" \
+      6 \
+      2592000000 \
+      524288
+
+    # -------------------------------------------------------------------------
+    # 7. algoverse.rooms.created
+    #    partitions=6, key=roomId, retention=1d
+    # -------------------------------------------------------------------------
+    create_topic "algoverse.rooms.created" \
+      6 \
+      86400000 \
+      524288
+
+    # -------------------------------------------------------------------------
+    # 8. algoverse.rooms.ended
+    #    partitions=6, key=roomId, retention=7d
+    # -------------------------------------------------------------------------
+    create_topic "algoverse.rooms.ended" \
+      6 \
+      604800000 \
+      524288
+
+    # -------------------------------------------------------------------------
+    # 9. algoverse.ai.hint-requested
+    #    partitions=12, key=userId, retention=7d
+    # -------------------------------------------------------------------------
+    create_topic "algoverse.ai.hint-requested" \
+      12 \
+      604800000 \
+      1048576
+
+    # -------------------------------------------------------------------------
+    # 10. algoverse.notifications.requested
+    #     partitions=12, key=userId, retention=1d
+    # -------------------------------------------------------------------------
+    create_topic "algoverse.notifications.requested" \
+      12 \
+      86400000 \
+      524288
+
+    # -------------------------------------------------------------------------
+    # 11. algoverse.analytics.events
+    #     partitions=48, key=sessionId, retention=90d, max.message.bytes=2MB
+    #     High-volume firehose; segment.ms=3600000 (1h) for faster compaction
+    # -------------------------------------------------------------------------
+    create_topic "algoverse.analytics.events" \
+      48 \
+      7776000000 \
+      2097152 \
+      "segment.ms=3600000"
+
+    # -------------------------------------------------------------------------
+    # 12. algoverse.leaderboard.updated
+    #     partitions=3, key=period, retention=1d, max.message.bytes=5MB
+    #     (leaderboard snapshots can be large)
+    # -------------------------------------------------------------------------
+    create_topic "algoverse.leaderboard.updated" \
+      3 \
+      86400000 \
+      5242880
+
+    # -------------------------------------------------------------------------
+    # 13. algoverse.problems.solved-first-time
+    #     partitions=12, key=userId, retention=30d
+    # -------------------------------------------------------------------------
+    create_topic "algoverse.problems.solved-first-time" \
+      12 \
+      2592000000 \
+      524288
+
+    # -------------------------------------------------------------------------
+    # DLQ topics (one per application topic, same partition count)
+    # retention=14d, suffix=.dlq
+    # -------------------------------------------------------------------------
+    DLQ_RETENTION_MS=1209600000   # 14 days
+
+    for topic in \
+      "algoverse.submissions.created:24" \
+      "algoverse.submissions.judged:24" \
+      "algoverse.users.registered:6" \
+      "algoverse.users.xp-updated:12" \
+      "algoverse.streaks.updated:12" \
+      "algoverse.badges.earned:6" \
+      "algoverse.rooms.created:6" \
+      "algoverse.rooms.ended:6" \
+      "algoverse.ai.hint-requested:12" \
+      "algoverse.notifications.requested:12" \
+      "algoverse.analytics.events:48" \
+      "algoverse.leaderboard.updated:3" \
+      "algoverse.problems.solved-first-time:12"; do
+
+      dlq_name="${topic%%:*}.dlq"
+      dlq_partitions="${topic##*:}"
+
+      create_topic "$dlq_name" \
+        "$dlq_partitions" \
+        "$DLQ_RETENTION_MS" \
+        2097152
+    done
+
+    # -------------------------------------------------------------------------
+    # Poison pill topic
+    # -------------------------------------------------------------------------
+    create_topic "algoverse.poison-pills" \
+      1 \
+      2592000000 \
+      2097152
+
+    echo "[INFO] All topics verified/created successfully."
+
+  # ---------------------------------------------------------------------------
+  # command.properties — used by kafka-topics.sh for SCRAM authentication
+  # ---------------------------------------------------------------------------
+  command.properties: |
+    security.protocol=SASL_SSL
+    sasl.mechanism=SCRAM-SHA-512
+    sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required \
+      username="${KAFKA_ADMIN_USERNAME}" \
+      password="${KAFKA_ADMIN_PASSWORD}";
+    ssl.truststore.location=/opt/kafka/certs/truststore.jks
+    ssl.truststore.password=${KAFKA_TRUSTSTORE_PASSWORD}
+
+---
+# =============================================================================
+# Job: kafka-topics-init
+# Runs once at cluster bootstrap to create all topics.
+# Uses Strimzi's bundled kafka-topics.sh from the broker image.
+# =============================================================================
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-topics-init
+  namespace: algoverse-platform
+  labels:
+    app.kubernetes.io/name: kafka-topics-init
+    app.kubernetes.io/component: kafka-init
+    app.kubernetes.io/part-of: algoverse
+  annotations:
+    # Helm hook: runs after all CRDs and the Kafka cluster resource are installed
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  # Retry up to 3 times (e.g. if Kafka isn't ready yet on first attempt)
+  backoffLimit: 3
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kafka-topics-init
+        app.kubernetes.io/component: kafka-init
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: kafka-topics-init-sa
+
+      # Wait for Kafka cluster to be Ready before running the init script
+      initContainers:
+        - name: wait-for-kafka
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for Kafka bootstrap to be reachable..."
+              until nc -z algoverse-kafka-cluster-kafka-bootstrap.algoverse-platform.svc.cluster.local 9093; do
+                echo "Kafka not ready yet, retrying in 5s..."
+                sleep 5
+              done
+              echo "Kafka is reachable."
+
+      containers:
+        - name: kafka-topics-init
+          # Use the same Kafka image as the cluster brokers for CLI compatibility
+          image: quay.io/strimzi/kafka:0.40.0-kafka-3.7.0
+          command:
+            - /bin/bash
+            - /scripts/create-topics.sh
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "algoverse-kafka-cluster-kafka-bootstrap.algoverse-platform.svc.cluster.local:9093"
+            - name: KAFKA_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: kafka-admin-credentials
+                  key: username
+            - name: KAFKA_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: kafka-admin-credentials
+                  key: password
+            - name: KAFKA_TRUSTSTORE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: kafka-truststore-secret
+                  key: truststore.password
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+            - name: command-config
+              mountPath: /opt/kafka/config/command.properties
+              subPath: command.properties
+            - name: kafka-cluster-ca-cert
+              mountPath: /opt/kafka/certs
+              readOnly: true
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+      volumes:
+        - name: scripts
+          configMap:
+            name: kafka-topics-config
+            items:
+              - key: create-topics.sh
+                path: create-topics.sh
+                mode: 0755
+        - name: command-config
+          configMap:
+            name: kafka-topics-config
+            items:
+              - key: command.properties
+                path: command.properties
+        - name: kafka-cluster-ca-cert
+          secret:
+            # Strimzi generates this secret automatically
+            secretName: algoverse-kafka-cluster-cluster-ca-cert
+            items:
+              - key: ca.crt
+                path: ca.crt
+              - key: ca.p12
+                path: ca.p12
+      tolerations:
+        - key: "dedicated"
+          operator: "Equal"
+          value: "kafka-init"
+          effect: "NoSchedule"
+
+---
+# =============================================================================
+# ServiceAccount for the init Job (minimal permissions)
+# =============================================================================
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kafka-topics-init-sa
+  namespace: algoverse-platform
+  labels:
+    app.kubernetes.io/name: kafka-topics-init-sa
+    app.kubernetes.io/component: kafka-init
+    app.kubernetes.io/part-of: algoverse
+
+---
+# =============================================================================
+# Strimzi Kafka Cluster: algoverse-kafka-cluster
+#
+# Topology:
+#   - 3 Kafka brokers  (each: 4 CPU, 8 GiB RAM, 100 GiB EBS gp3 SSD)
+#   - 3 ZooKeeper nodes (each: 1 CPU, 2 GiB RAM, 20 GiB EBS gp3 SSD)
+#   - TLS inter-broker encryption
+#   - SCRAM-SHA-512 client authentication
+#   - Cruise Control for partition rebalancing
+#   - JMX Exporter for Prometheus metrics
+# =============================================================================
+
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: algoverse-kafka-cluster
+  namespace: algoverse-platform
+  labels:
+    app.kubernetes.io/name: algoverse-kafka-cluster
+    app.kubernetes.io/component: kafka
+    app.kubernetes.io/part-of: algoverse
+    environment: production
+spec:
+
+  # ---------------------------------------------------------------------------
+  # Kafka Broker Configuration
+  # ---------------------------------------------------------------------------
+  kafka:
+    version: 3.7.0
+    replicas: 3
+
+    listeners:
+      # Internal (in-cluster) listener — SASL/SCRAM over TLS
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+        authentication:
+          type: scram-sha-512
+
+      # External listener — LoadBalancer for off-cluster access (monitoring, CLI)
+      - name: external
+        port: 9094
+        type: loadbalancer
+        tls: true
+        authentication:
+          type: scram-sha-512
+        configuration:
+          bootstrap:
+            annotations:
+              service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+              service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+
+    # TLS configuration — Strimzi manages certificate rotation automatically
+    tls:
+      # Inter-broker communication is also encrypted
+      interBrokerProtocol: TLS
+
+    authorization:
+      type: simple
+      superUsers:
+        - User:kafka-admin
+
+    config:
+      # Replication & durability
+      default.replication.factor: 3
+      min.insync.replicas: 2
+      offsets.topic.replication.factor: 3
+      transaction.state.log.replication.factor: 3
+      transaction.state.log.min.isr: 2
+
+      # Performance tuning
+      num.network.threads: 8
+      num.io.threads: 16
+      socket.send.buffer.bytes: 1048576       # 1 MB
+      socket.receive.buffer.bytes: 1048576    # 1 MB
+      socket.request.max.bytes: 104857600     # 100 MB
+
+      # Log segments
+      log.segment.bytes: 1073741824           # 1 GB per segment
+      log.retention.check.interval.ms: 300000 # 5 min
+
+      # Compression
+      compression.type: lz4
+
+      # Leader election
+      leader.imbalance.check.interval.seconds: 300
+      leader.imbalance.per.broker.percentage: 10
+
+      # Quota
+      quota.window.num: 11
+      quota.window.size.seconds: 1
+
+      # JVM / GC — Strimzi sets heap via KAFKA_HEAP_OPTS; these are broker-level
+      log.message.format.version: "3.7"
+      inter.broker.protocol.version: "3.7"
+
+    # JVM heap: 4 GB for brokers (leaving ~4 GB for OS page cache)
+    jvmOptions:
+      -Xms: 4096m
+      -Xmx: 4096m
+      gcLoggingEnabled: true
+      javaSystemProperties:
+        - name: com.sun.jndi.rmi.object.trustURLCodebase
+          value: "false"
+
+    resources:
+      requests:
+        cpu: "3"
+        memory: "7Gi"
+      limits:
+        cpu: "4"
+        memory: "8Gi"
+
+    storage:
+      type: persistent-claim
+      size: 100Gi
+      class: gp3-ssd
+      deleteClaim: false
+
+    rack:
+      # Spread brokers across AWS Availability Zones for AZ fault tolerance
+      topologyKey: topology.kubernetes.io/zone
+
+    template:
+      pod:
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchLabels:
+                    strimzi.io/cluster: algoverse-kafka-cluster
+                    strimzi.io/kind: Kafka
+                topologyKey: kubernetes.io/hostname
+        tolerations:
+          - key: "dedicated"
+            operator: "Equal"
+            value: "kafka"
+            effect: "NoSchedule"
+        terminationGracePeriodSeconds: 120
+
+    # JMX Exporter for Prometheus metrics
+    metricsConfig:
+      type: jmxPrometheusExporter
+      valueFrom:
+        configMapKeyRef:
+          name: kafka-metrics-config
+          key: kafka-metrics-config.yml
+
+  # ---------------------------------------------------------------------------
+  # ZooKeeper Configuration
+  # ---------------------------------------------------------------------------
+  zookeeper:
+    replicas: 3
+
+    storage:
+      type: persistent-claim
+      size: 20Gi
+      class: gp3-ssd
+      deleteClaim: false
+
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "1"
+        memory: "2Gi"
+
+    jvmOptions:
+      -Xms: 512m
+      -Xmx: 1024m
+
+    template:
+      pod:
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchLabels:
+                    strimzi.io/cluster: algoverse-kafka-cluster
+                    strimzi.io/kind: ZooKeeper
+                topologyKey: kubernetes.io/hostname
+        terminationGracePeriodSeconds: 60
+
+    metricsConfig:
+      type: jmxPrometheusExporter
+      valueFrom:
+        configMapKeyRef:
+          name: kafka-metrics-config
+          key: zookeeper-metrics-config.yml
+
+  # ---------------------------------------------------------------------------
+  # Entity Operator (manages KafkaTopic and KafkaUser CRDs)
+  # ---------------------------------------------------------------------------
+  entityOperator:
+    topicOperator:
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "256Mi"
+        limits:
+          cpu: "500m"
+          memory: "512Mi"
+      reconciliationIntervalSeconds: 120
+      zookeeperSessionTimeoutSeconds: 18
+
+    userOperator:
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "256Mi"
+        limits:
+          cpu: "500m"
+          memory: "512Mi"
+      reconciliationIntervalSeconds: 120
+      secretPrefix: kafka-user-
+
+  # ---------------------------------------------------------------------------
+  # Cruise Control — automatic partition rebalancing
+  # ---------------------------------------------------------------------------
+  cruiseControl:
+    # Cruise Control schedules rebalance if any broker is >20% above average
+    config:
+      # Rebalancing goals (in priority order)
+      goals: >-
+        com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal,
+        com.linkedin.kafka.cruisecontrol.analyzer.goals.MinTopicLeadersPerBrokerGoal,
+        com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal,
+        com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal,
+        com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal,
+        com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal,
+        com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal,
+        com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal,
+        com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal,
+        com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal,
+        com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal,
+        com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal,
+        com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal,
+        com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal,
+        com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderReplicaDistributionGoal,
+        com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal
+
+      # Capacity limits per broker
+      capacity.config.file: /etc/cruise-control/capacity.json
+      cpu.balance.threshold: 1.20
+      disk.balance.threshold: 1.20
+      network.inbound.balance.threshold: 1.20
+      network.outbound.balance.threshold: 1.20
+      replica.count.balance.threshold: 1.20
+      leader.replica.count.balance.threshold: 1.20
+
+      # Monitoring window
+      num.partition.metrics.windows: 5
+      min.samples.per.partition.metrics.window: 3
+      partition.metrics.window.ms: 300000           # 5 min
+
+      # Anomaly detection
+      anomaly.detection.goals: >-
+        com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal,
+        com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal,
+        com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal
+
+      # Self-healing — auto-fix broker failures (not partition imbalance)
+      self.healing.broker.failure.enabled: "true"
+      self.healing.goal.violation.enabled: "false"   # manual approval for rebalance
+      broker.failure.alert.threshold.ms: "300000"
+
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "512Mi"
+      limits:
+        cpu: "2"
+        memory: "2Gi"
+
+    jvmOptions:
+      -Xms: 512m
+      -Xmx: 1536m
+
+    template:
+      pod:
+        terminationGracePeriodSeconds: 30
+
+  # ---------------------------------------------------------------------------
+  # Kafka Exporter — consumer lag metrics for Prometheus / Grafana
+  # ---------------------------------------------------------------------------
+  kafkaExporter:
+    topicRegex: ".*"
+    groupRegex: ".*"
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "500m"
+        memory: "256Mi"
+    readinessProbe:
+      initialDelaySeconds: 15
+      timeoutSeconds: 5
+    livenessProbe:
+      initialDelaySeconds: 15
+      timeoutSeconds: 5
+
+---
+# =============================================================================
+# StorageClass: gp3-ssd
+# AWS EBS gp3 with 3000 IOPS baseline and throughput=125 MB/s
+# =============================================================================
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3-ssd
+  labels:
+    app.kubernetes.io/part-of: algoverse
+provisioner: ebs.csi.aws.com
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+parameters:
+  type: gp3
+  iops: "3000"
+  throughput: "125"
+  fsType: ext4
+  encrypted: "true"
+  kmsKeyId: ""   # Set to your KMS key ARN for CMK encryption
+
+---
+# =============================================================================
+# KafkaUser: kafka-admin
+# SCRAM-SHA-512 superuser for admin operations (topic creation, ACL management)
+# =============================================================================
+
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: kafka-admin
+  namespace: algoverse-platform
+  labels:
+    strimzi.io/cluster: algoverse-kafka-cluster
+    app.kubernetes.io/part-of: algoverse
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      # Superuser: full access to all resources
+      - resource:
+          type: topic
+          name: "*"
+          patternType: literal
+        operations: [ All ]
+        host: "*"
+      - resource:
+          type: group
+          name: "*"
+          patternType: literal
+        operations: [ All ]
+        host: "*"
+      - resource:
+          type: cluster
+        operations: [ All ]
+        host: "*"
+
+---
+# =============================================================================
+# KafkaUser: execution-service
+# Producer on submissions.created, submissions.judged
+# =============================================================================
+
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: execution-service
+  namespace: algoverse-platform
+  labels:
+    strimzi.io/cluster: algoverse-kafka-cluster
+    app.kubernetes.io/part-of: algoverse
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      - resource:
+          type: topic
+          name: "algoverse.submissions.created"
+          patternType: literal
+        operations: [ Write, Describe, DescribeConfigs ]
+        host: "*"
+      - resource:
+          type: topic
+          name: "algoverse.submissions.judged"
+          patternType: literal
+        operations: [ Write, Describe, DescribeConfigs ]
+        host: "*"
+      - resource:
+          type: topic
+          name: "algoverse.submissions.created.dlq"
+          patternType: literal
+        operations: [ Write, Describe ]
+        host: "*"
+      - resource:
+          type: topic
+          name: "algoverse.submissions.judged.dlq"
+          patternType: literal
+        operations: [ Write, Describe ]
+        host: "*"
+      # Consumer on submissions.created
+      - resource:
+          type: group
+          name: "execution-service"
+          patternType: literal
+        operations: [ Read, Describe ]
+        host: "*"
+      - resource:
+          type: topic
+          name: "algoverse.submissions.created"
+          patternType: literal
+        operations: [ Read, Describe ]
+        host: "*"
+
+---
+# =============================================================================
+# KafkaUser: gamification-service
+# Consumer on submissions.judged, rooms.ended, problems.solved-first-time
+# Producer on users.xp-updated, streaks.updated, badges.earned,
+#            problems.solved-first-time
+# =============================================================================
+
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: gamification-service
+  namespace: algoverse-platform
+  labels:
+    strimzi.io/cluster: algoverse-kafka-cluster
+    app.kubernetes.io/part-of: algoverse
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      # Consume
+      - resource:
+          type: group
+          name: "gamification-service"
+          patternType: literal
+        operations: [ Read, Describe ]
+        host: "*"
+      - resource:
+          type: topic
+          name: "algoverse.submissions.judged"
+          patternType: literal
+        operations: [ Read, Describe ]
+        host: "*"
+      - resource:
+          type: topic
+          name: "algoverse.rooms.ended"
+          patternType: literal
+        operations: [ Read, Describe ]
+        host: "*"
+      - resource:
+          type: topic
+          name: "algoverse.problems.solved-first-time"
+          patternType: literal
+        operations: [ Read, Describe ]
+        host: "*"
+      - resource:
+          type: topic
+          name: "algoverse.users.registered"
+          patternType: literal
+        operations: [ Read, Describe ]
+        host: "*"
+      # Produce
+      - resource:
+          type: topic
+          name: "algoverse.users.xp-updated"
+          patternType: literal
+        operations: [ Write, Describe ]
+        host: "*"
+      - resource:
+          type: topic
+          name: "algoverse.streaks.updated"
+          patternType: literal
+        operations: [ Write, Describe ]
+        host: "*"
+      - resource:
+          type: topic
+          name: "algoverse.badges.earned"
+          patternType: literal
+        operations: [ Write, Describe ]
+        host: "*"
+      - resource:
+          type: topic
+          name: "algoverse.problems.solved-first-time"
+          patternType: literal
+        operations: [ Write, Describe ]
+        host: "*"
+      # DLQ
+      - resource:
+          type: topic
+          name: "algoverse.submissions.judged.dlq"
+          patternType: literal
+        operations: [ Write, Describe ]
+        host: "*"
+
+---
+# =============================================================================
+# KafkaUser: notification-service
+# Consumer on badges.earned, streaks.updated, notifications.requested,
+#            users.registered, problems.solved-first-time
+# =============================================================================
+
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: notification-service
+  namespace: algoverse-platform
+  labels:
+    strimzi.io/cluster: algoverse-kafka-cluster
+    app.kubernetes.io/part-of: algoverse
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      - resource:
+          type: group
+          name: "notification-service"
+          patternType: literal
+        operations: [ Read, Describe ]
+        host: "*"
+      - resource:
+          type: topic
+          name: "algoverse.badges.earned"
+          patternType: literal
+        operations: [ Read, Describe ]
+        host: "*"
+      - resource:
+          type: topic
+          name: "algoverse.streaks.updated"
+          patternType: literal
+        operations: [ Read, Describe ]
+        host: "*"
+      - resource:
+          type: topic
+          name: "algoverse.notifications.requested"
+          patternType: literal
+        operations: [ Read, Describe ]
+        host: "*"
+      - resource:
+          type: topic
+          name: "algoverse.users.registered"
+          patternType: literal
+        operations: [ Read, Describe ]
+        host: "*"
+      - resource:
+          type: topic
+          name: "algoverse.problems.solved-first-time"
+          patternType: literal
+        operations: [ Read, Describe ]
+        host: "*"
+      # DLQ
+      - resource:
+          type: topic
+          name: "algoverse.badges.earned.dlq"
+          patternType: literal
+        operations: [ Write, Describe ]
+        host: "*"
+      - resource:
+          type: topic
+          name: "algoverse.streaks.updated.dlq"
+          patternType: literal
+        operations: [ Write, Describe ]
+        host: "*"
+      - resource:
+          type: topic
+          name: "algoverse.notifications.requested.dlq"
+          patternType: literal
+        operations: [ Write, Describe ]
+        host: "*"
+
+---
+# =============================================================================
+# ConfigMap: kafka-metrics-config
+# JMX Exporter configuration for Prometheus scraping
+# =============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-metrics-config
+  namespace: algoverse-platform
+  labels:
+    app.kubernetes.io/name: kafka-metrics-config
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: algoverse
+data:
+  kafka-metrics-config.yml: |
+    lowercaseOutputName: true
+    lowercaseOutputLabelNames: true
+    rules:
+      # Kafka broker metrics
+      - pattern: kafka.server<type=(.+), name=(.+), clientId=(.+), topic=(.+), partition=(.*)><>Value
+        name: kafka_server_$1_$2
+        type: GAUGE
+        labels:
+          clientId: "$3"
+          topic: "$4"
+          partition: "$5"
+      - pattern: kafka.server<type=(.+), name=(.+), clientId=(.+), brokerHost=(.+), brokerPort=(.+)><>Value
+        name: kafka_server_$1_$2
+        type: GAUGE
+        labels:
+          clientId: "$3"
+          broker: "$4:$5"
+      - pattern: kafka.server<type=(.+), name=(.+)><>Value
+        name: kafka_server_$1_$2
+        type: GAUGE
+      - pattern: kafka.network<type=(.+), name=(.+)><>Value
+        name: kafka_network_$1_$2
+        type: GAUGE
+      - pattern: kafka.controller<type=(.+), name=(.+)><>Value
+        name: kafka_controller_$1_$2
+        type: GAUGE
+      - pattern: kafka.log<type=(.+), name=(.+), topic=(.+), partition=(.+)><>Value
+        name: kafka_log_$1_$2
+        type: GAUGE
+        labels:
+          topic: "$3"
+          partition: "$4"
+
+  zookeeper-metrics-config.yml: |
+    lowercaseOutputName: true
+    lowercaseOutputLabelNames: true
+    rules:
+      - pattern: "org.apache.ZooKeeperService<name0=ReplicatedServer_id(\\d+)><>(\\w+)"
+        name: "zookeeper_$2"
+        type: GAUGE
+      - pattern: "org.apache.ZooKeeperService<name0=ReplicatedServer_id(\\d+), name1=replica.(\\d+)><>(\\w+)"
+        name: "zookeeper_$3"
+        type: GAUGE
+        labels:
+          replicaId: "$2"
+      - pattern: "org.apache.ZooKeeperService<name0=ReplicatedServer_id(\\d+), name1=replica.(\\d+), name2=(\\w+)><>(\\w+)"
+        name: "zookeeper_$4"
+        type: GAUGE
+        labels:
+          replicaId: "$2"
+          memberType: "$3"
