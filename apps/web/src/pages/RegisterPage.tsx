@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { api, getErrorMessage } from '../lib/api';
 import { useAuthStore } from '../stores/auth-store';
 import type { AuthResponse } from '@algoverse/shared-types';
+import SocialAuthButtons from '../components/auth/SocialAuthButtons';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -37,6 +38,14 @@ export default function RegisterPage() {
         </div>
 
         <div className="glass rounded-2xl p-8">
+          <SocialAuthButtons mode="signup" />
+
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-border-default" />
+            <span className="text-text-muted text-xs font-medium">or</span>
+            <div className="flex-1 h-px bg-border-default" />
+          </div>
+
           <form
             onSubmit={(e) => { e.preventDefault(); setError(''); mutate({ email, password, displayName }); }}
             className="space-y-4"
