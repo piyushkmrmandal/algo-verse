@@ -34,6 +34,8 @@ spring:
     baseline-on-migrate: true
 
   data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/problemdb}
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
