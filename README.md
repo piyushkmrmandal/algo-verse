@@ -82,116 +82,91 @@ AlgoVerse
 
 ---
 
-## Running Locally
+## Local Development
 
 ### Prerequisites
 
 | Tool | Minimum Version |
 |---|---|
-| Node.js | 20.x |
-| Java | 21 |
-| Python | 3.11 |
 | Docker | 24.x (with Docker Compose v2) |
+| Java | 21 |
+| Node.js | 20.x |
+| Python | 3.12+ |
 | Maven | 3.9 |
 
-### 1. Clone the repo
+### Quick Start — Infra Only (recommended for daily development)
+
+Run infrastructure in Docker and application services locally for fast iteration:
 
 ```bash
-git clone https://github.com/piyushkmrmandal/algo-verse.git
-cd algo-verse
-git checkout develop
-```
+# 1. Copy and configure environment variables
+cp .env.example .env
+# Edit .env — at minimum set ANTHROPIC_API_KEY
 
-### 2. Start infrastructure (databases, Redis, Kafka)
+# 2. Start all infrastructure (postgres, redis, kafka, elasticsearch, mongodb)
+make infra
 
-```bash
-docker compose -f docker-compose.dev.yml up -d
-```
-
-This starts: PostgreSQL, Redis, Apache Kafka + Zookeeper, Elasticsearch, MongoDB.
-
-> **Note:** `docker-compose.dev.yml` is coming soon. In the meantime, start each dependency manually using the ports documented below.
-
-### 3. Generate RSA keys for JWT (auth-service)
-
-```bash
+# 3. Generate RSA keys for JWT (auth-service, one-time)
 openssl genrsa -out private.pem 2048
 openssl rsa -in private.pem -pubout -out public.pem
-```
 
-### 4. Configure environment variables
-
-Each service reads configuration from environment variables. Copy the example and fill in your values:
-
-```bash
-# auth-service
-export AUTH_DB_URL=jdbc:postgresql://localhost:5432/algoverse_auth
-export REDIS_HOST=localhost
-export REDIS_PASSWORD=
-export KAFKA_BOOTSTRAP_SERVERS=localhost:9092
-export JWT_PRIVATE_KEY="$(cat private.pem)"
-export JWT_PUBLIC_KEY="$(cat public.pem)"
-
-# problem-service
-export PROBLEM_DB_URL=jdbc:postgresql://localhost:5432/algoverse_problems
-
-# execution-service
-export EXECUTION_DB_URL=jdbc:postgresql://localhost:5432/algoverse_execution
-```
-
-### 5. Start Spring Boot services
-
-Run each service in a separate terminal from its directory:
-
-```bash
-# Terminal 1
+# 4. Run each application service (separate terminals)
 cd services/auth-service && mvn spring-boot:run
-
-# Terminal 2
 cd services/problem-service && mvn spring-boot:run
+cd services/submission-service && mvn spring-boot:run
+cd services/gamification-service && mvn spring-boot:run
+cd services/ai-service && uvicorn main:app --reload --port 8090
 
-# Terminal 3
-cd services/execution-service && mvn spring-boot:run
+# 5. Start the frontend
+make web
+# or: cd apps/web && npm run dev
 ```
 
-Default ports: auth → `8081`, problems → `8082`, execution → `8083`.
+> **Kafka note:** When running services locally (outside Docker), use `localhost:29092` as the Kafka bootstrap server. Inside Docker, use `kafka:9092`.
 
-### 6. Start the AI service
+### Full Stack with Docker
+
+Run everything — infra and all application services — in Docker:
 
 ```bash
-cd services/ai-service
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-export ANTHROPIC_API_KEY=your_key_here
-uvicorn main:app --reload --port 8090
+cp .env.example .env   # configure as needed
+make up                # starts full stack
+make logs s=auth-service   # tail logs for a specific service
+make down              # stop everything
+make clean             # remove containers + volumes (destructive)
 ```
 
-### 7. Start the frontend
+### Makefile Targets
 
-```bash
-# Install dependencies (from repo root)
-npm install
-
-# Start dev server
-npm run dev -w apps/web
-```
-
-The frontend dev server runs on `http://localhost:5173` and proxies API calls to the backend services automatically.
-
-### Default port map
-
-| Service | Port |
+| Target | Description |
 |---|---|
-| Frontend (Vite) | 5173 |
-| auth-service | 8081 |
-| problem-service | 8082 |
-| execution-service | 8083 |
-| ai-service (FastAPI) | 8090 |
-| PostgreSQL | 5432 |
-| Redis | 6379 |
-| Kafka | 9092 |
-| Elasticsearch | 9200 |
-| MongoDB | 27017 |
+| `make infra` | Start infrastructure only |
+| `make up` | Start full stack |
+| `make down` | Stop all services |
+| `make logs s=<name>` | Tail logs for a service |
+| `make ps` | Show running containers |
+| `make clean` | Remove containers + volumes |
+| `make kafka-topics` | Create required Kafka topics |
+| `make web` | Start frontend Vite dev server |
+
+### Service Port Reference
+
+| Service | Port | Notes |
+|---|---|---|
+| Frontend (Vite) | 5173 | Run locally with `make web` |
+| auth-service | 8081 | Spring Boot |
+| problem-service | 8082 | Spring Boot |
+| submission-service | 8083 | Spring Boot |
+| gamification-service | 8084 | Spring Boot |
+| ai-service (FastAPI) | 8090 | Python |
+| PostgreSQL | 5432 | |
+| Redis | 6379 | |
+| Kafka (Docker internal) | 9092 | Use `kafka:9092` inside Docker |
+| Kafka (host-accessible) | 29092 | Use `localhost:29092` outside Docker |
+| Zookeeper | 2181 | |
+| Elasticsearch | 9200 | |
+| MongoDB | 27017 | |
+| Kafka UI | 8089 | http://localhost:8089 |
 
 ---
 
