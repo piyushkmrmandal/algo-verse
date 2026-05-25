@@ -6,6 +6,17 @@ import { RouterProvider } from 'react-router-dom';
 import { router } from './App';
 import './index.css';
 
+// Apply persisted theme before first paint to avoid flash
+(function applyInitialTheme() {
+  try {
+    const stored = localStorage.getItem('algoverse-theme');
+    const theme = stored ? JSON.parse(stored)?.state?.theme : 'dark';
+    if (theme === 'light') document.documentElement.classList.add('light');
+  } catch {
+    // ignore — default dark theme is already applied via :root CSS vars
+  }
+})();
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

@@ -6,6 +6,7 @@ import { api, getErrorMessage } from '../lib/api';
 import { useAuthStore } from '../stores/auth-store';
 import type { AuthResponse } from '@algoverse/shared-types';
 import SocialAuthButtons from '../components/auth/SocialAuthButtons';
+import ThemeToggle from '../components/ui/ThemeToggle';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -25,7 +26,10 @@ export default function LoginPage() {
   });
 
   return (
-    <div className="min-h-screen bg-bg-base flex items-center justify-center px-4">
+    <div className="min-h-screen bg-bg-base flex items-center justify-center px-4 relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}

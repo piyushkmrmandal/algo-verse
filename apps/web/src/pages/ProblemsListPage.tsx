@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../lib/api';
 import { queryKeys } from '../lib/queryKeys';
 import type { Page, ProblemSummary, Difficulty } from '@algoverse/shared-types';
+import ThemeToggle from '../components/ui/ThemeToggle';
 
 const DIFFICULTIES: Array<{ value: string; label: string }> = [
   { value: '', label: 'All' },
@@ -41,6 +42,14 @@ export default function ProblemsListPage() {
 
   return (
     <div className="min-h-screen bg-bg-base">
+      {/* Top bar */}
+      <nav className="border-b border-border-subtle bg-bg-surface/80 backdrop-blur-md sticky top-0 z-40">
+        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+          <Link to="/dashboard" className="font-bold text-gradient-brand text-lg">AlgoVerse</Link>
+          <ThemeToggle />
+        </div>
+      </nav>
+
       <div className="max-w-5xl mx-auto px-4 py-12">
         {/* Header */}
         <motion.div

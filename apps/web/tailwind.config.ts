@@ -6,11 +6,11 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Backgrounds
-        'bg-base': '#0A0A0B',
-        'bg-surface': '#111113',
-        'bg-elevated': '#18181C',
-        'bg-overlay': '#1E1E24',
+        // Backgrounds — driven by CSS vars (supports dark/light toggle)
+        'bg-base':     'rgb(var(--bg-base)    / <alpha-value>)',
+        'bg-surface':  'rgb(var(--bg-surface) / <alpha-value>)',
+        'bg-elevated': 'rgb(var(--bg-elevated)/ <alpha-value>)',
+        'bg-overlay':  'rgb(var(--bg-overlay) / <alpha-value>)',
 
         // Brand
         'brand-primary': '#6366F1',
@@ -28,16 +28,16 @@ const config: Config = {
         info: '#3B82F6',
         'info-dim': '#1E3A5F',
 
-        // Text
-        'text-primary': '#F4F4F5',
-        'text-secondary': '#A1A1AA',
-        'text-muted': '#52525B',
-        'text-disabled': '#3F3F46',
+        // Text — driven by CSS vars
+        'text-primary':   'rgb(var(--text-primary)   / <alpha-value>)',
+        'text-secondary': 'rgb(var(--text-secondary) / <alpha-value>)',
+        'text-muted':     'rgb(var(--text-muted)     / <alpha-value>)',
+        'text-disabled':  'rgb(var(--text-disabled)  / <alpha-value>)',
 
-        // Borders
-        'border-subtle': '#27272A',
-        'border-default': '#3F3F46',
-        'border-strong': '#52525B',
+        // Borders — driven by CSS vars
+        'border-subtle':  'rgb(var(--border-subtle)  / <alpha-value>)',
+        'border-default': 'rgb(var(--border-default) / <alpha-value>)',
+        'border-strong':  'rgb(var(--border-strong)  / <alpha-value>)',
 
         // Syntax highlighting
         'syntax-keyword': '#BD93F9',
@@ -84,7 +84,7 @@ const config: Config = {
         'glow-accent': '0 0 20px rgba(34, 211, 238, 0.3)',
         'glow-success': '0 0 20px rgba(16, 185, 129, 0.3)',
         'glow-danger': '0 0 20px rgba(239, 68, 68, 0.3)',
-        'glass': '0 4px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+        'glass': 'var(--shadow-glass)',
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',

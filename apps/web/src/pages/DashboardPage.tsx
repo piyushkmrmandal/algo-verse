@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useAuthStore } from '../stores/auth-store';
 import { XpCounter } from '../components/gamification/XpCounter';
 import { StreakTracker } from '../components/gamification/StreakTracker';
+import ThemeToggle from '../components/ui/ThemeToggle';
 
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
@@ -14,10 +15,11 @@ export default function DashboardPage() {
       <nav className="border-b border-border-subtle bg-bg-surface/80 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <span className="font-bold text-gradient-brand text-lg">AlgoVerse</span>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Link to="/problems" className="text-text-secondary hover:text-text-primary text-sm transition-colors">
               Problems
             </Link>
+            <ThemeToggle />
             <button onClick={logout} className="btn-ghost text-sm py-1.5">
               Sign out
             </button>
