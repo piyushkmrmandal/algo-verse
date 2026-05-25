@@ -19,6 +19,7 @@ import ProblemStatement, {
   type ProblemDetail,
 } from '../components/problem/ProblemStatement'
 import AiTutor from '../components/ai/AiTutor'
+import VisualizerPanel from '../components/visualizer/VisualizerPanel'
 import { useEditorStore, type SupportedLanguage } from '../stores/editor-store'
 import AchievementToast, {
   type Badge,
@@ -667,26 +668,15 @@ const ProblemPage: React.FC = () => {
             </button>
           </div>
 
-          {/* Visualizer placeholder */}
+          {/* Visualizer */}
           {!showAiTutor && (
-            <div className="flex-1 flex flex-col items-center justify-center text-center gap-4 p-6">
-              <div className="text-5xl">🎬</div>
-              <div>
-                <div className="text-sm font-semibold text-[#F8F8F2] mb-1">
-                  Algorithm Visualizer
-                </div>
-                <div className="text-xs text-[#475569] max-w-[180px]">
-                  Run your code to see a step-by-step execution trace
-                </div>
-              </div>
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={handleRun}
-                disabled={isRunning}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#22D3EE]/10 text-[#22D3EE] border border-[#22D3EE]/30 hover:bg-[#22D3EE]/20 transition-all disabled:opacity-40"
-              >
-                Visualize
-              </motion.button>
+            <div className="flex-1 overflow-hidden">
+              <VisualizerPanel
+                language={currentLanguage}
+                code={currentCode}
+                onRun={handleRun}
+                isRunning={isRunning}
+              />
             </div>
           )}
 

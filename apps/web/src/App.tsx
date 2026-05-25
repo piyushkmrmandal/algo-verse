@@ -10,6 +10,10 @@ const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const OAuth2CallbackPage = lazy(() => import('./pages/OAuth2CallbackPage'));
+const CollaboratePage = lazy(() => import('./pages/CollaboratePage'));
+const CollabRoomPage = lazy(() => import('./pages/CollabRoomPage'));
+const SysdesignListPage = lazy(() => import('./pages/SysdesignListPage'));
+const SysdesignProblemPage = lazy(() => import('./pages/SysdesignProblemPage'));
 
 function PageLoader() {
   return (
@@ -101,6 +105,39 @@ export const router = createBrowserRouter([
         element: (
           <RequireAuth>
             <ProblemPage />
+          </RequireAuth>
+        ),
+      },
+
+      {
+        path: 'collaborate',
+        element: (
+          <RequireAuth>
+            <CollaboratePage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'collab/room/:code',
+        element: (
+          <RequireAuth>
+            <CollabRoomPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'sysdesign',
+        element: (
+          <RequireAuth>
+            <SysdesignListPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'sysdesign/:slug',
+        element: (
+          <RequireAuth>
+            <SysdesignProblemPage />
           </RequireAuth>
         ),
       },
