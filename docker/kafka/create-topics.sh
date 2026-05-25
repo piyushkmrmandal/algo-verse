@@ -14,6 +14,11 @@ TOPICS=(
   "algoverse.hints.response"
   "algoverse.xp.awarded"
   "algoverse.badge.earned"
+  "algoverse.user.registered"
+  "algoverse.execution.requested"
+  "algoverse.execution.completed"
+  "algoverse.collab.room.created"
+  "algoverse.collab.room.ended"
 )
 
 echo "Waiting for Kafka broker at ${KAFKA_BROKER}..."

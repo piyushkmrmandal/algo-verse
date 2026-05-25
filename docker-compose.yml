@@ -351,6 +351,63 @@ services:
     networks:
       - algoverse-net
 
+  execution-service:
+    build:
+      context: ./services/execution-service
+      dockerfile: Dockerfile
+    container_name: algoverse-execution-service
+    restart: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8087:8087"
+    environment:
+      <<: *common-env
+      EXECUTION_DB_URL: ${EXECUTION_DB_URL:-jdbc:postgresql://postgres:5432/execution_db}
+      EXECUTION_DB_USER: ${POSTGRES_USER:-algoverse}
+      EXECUTION_DB_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+      PROBLEM_SERVICE_URL: http://problem-service:8082
+      SERVER_PORT: 8087
+    networks:
+      - algoverse-net
+
+  collaboration-service:
+    build:
+      context: ./services/collaboration-service
+      dockerfile: Dockerfile
+    container_name: algoverse-collaboration-service
+    restart: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8088:8088"
+    environment:
+      <<: *common-env
+      COLLAB_DB_URL: ${COLLAB_DB_URL:-jdbc:postgresql://postgres:5432/collaboration_db}
+      DB_USERNAME: ${POSTGRES_USER:-algoverse}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+      SERVER_PORT: 8088
+    networks:
+      - algoverse-net
+
   # ──────────────────────────────────────────────────────────────────────────
   # Frontend (commented out — run with `make web` or `npm run dev`)
   # ──────────────────────────────────────────────────────────────────────────

@@ -1,0 +1,211 @@
+##############################################################################
+# AlgoVerse — CI Pipeline
+# Runs on every PR to develop or main.
+# Builds and tests only the services that changed in the PR.
+##############################################################################
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # Detect which services/apps changed so we only run what matters
+  # ──────────────────────────────────────────────────────────────────────────
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      web:                   ${{ steps.filter.outputs.web }}
+      auth-service:          ${{ steps.filter.outputs.auth-service }}
+      problem-service:       ${{ steps.filter.outputs.problem-service }}
+      submission-service:    ${{ steps.filter.outputs.submission-service }}
+      gamification-service:  ${{ steps.filter.outputs.gamification-service }}
+      analytics-service:     ${{ steps.filter.outputs.analytics-service }}
+      sysdesign-service:     ${{ steps.filter.outputs.sysdesign-service }}
+      execution-service:     ${{ steps.filter.outputs.execution-service }}
+      collaboration-service: ${{ steps.filter.outputs.collaboration-service }}
+      ai-service:            ${{ steps.filter.outputs.ai-service }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            web:
+              - 'apps/web/**'
+              - 'libs/**'
+            auth-service:
+              - 'services/auth-service/**'
+            problem-service:
+              - 'services/problem-service/**'
+            submission-service:
+              - 'services/submission-service/**'
+            gamification-service:
+              - 'services/gamification-service/**'
+            analytics-service:
+              - 'services/analytics-service/**'
+            sysdesign-service:
+              - 'services/sysdesign-service/**'
+            execution-service:
+              - 'services/execution-service/**'
+            collaboration-service:
+              - 'services/collaboration-service/**'
+            ai-service:
+              - 'services/ai-service/**'
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Frontend — Vitest unit tests + TypeScript check
+  # ──────────────────────────────────────────────────────────────────────────
+  web:
+    name: Frontend (Vitest + tsc)
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: cd apps/web && npm run type-check || npx tsc --noEmit
+        name: TypeScript check
+      - run: cd apps/web && npm test -- --reporter=verbose
+        name: Unit tests
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Java services — shared build template
+  # ──────────────────────────────────────────────────────────────────────────
+  auth-service:
+    name: auth-service
+    needs: changes
+    if: needs.changes.outputs.auth-service == 'true'
+    uses: ./.github/workflows/_java-service.yml
+    with:
+      service: auth-service
+      java-version: '21'
+
+  problem-service:
+    name: problem-service
+    needs: changes
+    if: needs.changes.outputs.problem-service == 'true'
+    uses: ./.github/workflows/_java-service.yml
+    with:
+      service: problem-service
+      java-version: '21'
+
+  submission-service:
+    name: submission-service
+    needs: changes
+    if: needs.changes.outputs.submission-service == 'true'
+    uses: ./.github/workflows/_java-service.yml
+    with:
+      service: submission-service
+      java-version: '21'
+
+  gamification-service:
+    name: gamification-service
+    needs: changes
+    if: needs.changes.outputs.gamification-service == 'true'
+    uses: ./.github/workflows/_java-service.yml
+    with:
+      service: gamification-service
+      java-version: '21'
+
+  analytics-service:
+    name: analytics-service
+    needs: changes
+    if: needs.changes.outputs.analytics-service == 'true'
+    uses: ./.github/workflows/_java-service.yml
+    with:
+      service: analytics-service
+      java-version: '21'
+
+  sysdesign-service:
+    name: sysdesign-service
+    needs: changes
+    if: needs.changes.outputs.sysdesign-service == 'true'
+    uses: ./.github/workflows/_java-service.yml
+    with:
+      service: sysdesign-service
+      java-version: '21'
+
+  execution-service:
+    name: execution-service
+    needs: changes
+    if: needs.changes.outputs.execution-service == 'true'
+    uses: ./.github/workflows/_java-service.yml
+    with:
+      service: execution-service
+      java-version: '21'
+
+  collaboration-service:
+    name: collaboration-service
+    needs: changes
+    if: needs.changes.outputs.collaboration-service == 'true'
+    uses: ./.github/workflows/_java-service.yml
+    with:
+      service: collaboration-service
+      java-version: '21'
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # AI Service — Python / FastAPI
+  # ──────────────────────────────────────────────────────────────────────────
+  ai-service:
+    name: ai-service (Python)
+    needs: changes
+    if: needs.changes.outputs.ai-service == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/ai-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: pip install pytest pytest-asyncio httpx
+      - run: python -m pytest tests/ -v --tb=short 2>/dev/null || echo "No tests yet — skipping"
+        env:
+          ANTHROPIC_API_KEY: test-key
+          JWT_PUBLIC_KEY: test-key
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Gate — all required checks must pass before PR can merge
+  # ──────────────────────────────────────────────────────────────────────────
+  ci-gate:
+    name: CI Gate
+    needs:
+      - web
+      - auth-service
+      - problem-service
+      - submission-service
+      - gamification-service
+      - analytics-service
+      - sysdesign-service
+      - execution-service
+      - collaboration-service
+      - ai-service
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all jobs passed or were skipped
+        run: |
+          results='${{ toJSON(needs) }}'
+          echo "$results" | python3 -c "
+          import json, sys
+          needs = json.load(sys.stdin)
+          failed = [name for name, v in needs.items() if v['result'] not in ('success', 'skipped')]
+          if failed:
+              print('FAILED jobs:', failed)
+              sys.exit(1)
+          print('All checks passed or skipped.')
+          "

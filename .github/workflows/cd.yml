@@ -1,0 +1,268 @@
+##############################################################################
+# AlgoVerse — CD Pipeline
+# Triggers on merge to main.
+# Builds Docker images, pushes to GHCR, then deploys to staging.
+##############################################################################
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: cd-main
+  cancel-in-progress: false   # never cancel a deploy mid-flight
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/algoverse
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # Detect which services changed on this push to main
+  # ──────────────────────────────────────────────────────────────────────────
+  changes:
+    name: Detect changed services
+    runs-on: ubuntu-latest
+    outputs:
+      web:                   ${{ steps.filter.outputs.web }}
+      auth-service:          ${{ steps.filter.outputs.auth-service }}
+      problem-service:       ${{ steps.filter.outputs.problem-service }}
+      submission-service:    ${{ steps.filter.outputs.submission-service }}
+      gamification-service:  ${{ steps.filter.outputs.gamification-service }}
+      analytics-service:     ${{ steps.filter.outputs.analytics-service }}
+      sysdesign-service:     ${{ steps.filter.outputs.sysdesign-service }}
+      execution-service:     ${{ steps.filter.outputs.execution-service }}
+      collaboration-service: ${{ steps.filter.outputs.collaboration-service }}
+      ai-service:            ${{ steps.filter.outputs.ai-service }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            web:
+              - 'apps/web/**'
+              - 'libs/**'
+            auth-service:
+              - 'services/auth-service/**'
+            problem-service:
+              - 'services/problem-service/**'
+            submission-service:
+              - 'services/submission-service/**'
+            gamification-service:
+              - 'services/gamification-service/**'
+            analytics-service:
+              - 'services/analytics-service/**'
+            sysdesign-service:
+              - 'services/sysdesign-service/**'
+            execution-service:
+              - 'services/execution-service/**'
+            collaboration-service:
+              - 'services/collaboration-service/**'
+            ai-service:
+              - 'services/ai-service/**'
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Build & push Docker images (one job per service)
+  # ──────────────────────────────────────────────────────────────────────────
+  build-web:
+    name: Docker — web
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    uses: ./.github/workflows/_docker-build.yml
+    with:
+      service: web
+      context: apps/web
+      image: ${{ github.repository_owner }}/algoverse/web
+    secrets: inherit
+
+  build-auth-service:
+    name: Docker — auth-service
+    needs: changes
+    if: needs.changes.outputs.auth-service == 'true'
+    uses: ./.github/workflows/_docker-build.yml
+    with:
+      service: auth-service
+      context: services/auth-service
+      image: ${{ github.repository_owner }}/algoverse/auth-service
+    secrets: inherit
+
+  build-problem-service:
+    name: Docker — problem-service
+    needs: changes
+    if: needs.changes.outputs.problem-service == 'true'
+    uses: ./.github/workflows/_docker-build.yml
+    with:
+      service: problem-service
+      context: services/problem-service
+      image: ${{ github.repository_owner }}/algoverse/problem-service
+    secrets: inherit
+
+  build-submission-service:
+    name: Docker — submission-service
+    needs: changes
+    if: needs.changes.outputs.submission-service == 'true'
+    uses: ./.github/workflows/_docker-build.yml
+    with:
+      service: submission-service
+      context: services/submission-service
+      image: ${{ github.repository_owner }}/algoverse/submission-service
+    secrets: inherit
+
+  build-gamification-service:
+    name: Docker — gamification-service
+    needs: changes
+    if: needs.changes.outputs.gamification-service == 'true'
+    uses: ./.github/workflows/_docker-build.yml
+    with:
+      service: gamification-service
+      context: services/gamification-service
+      image: ${{ github.repository_owner }}/algoverse/gamification-service
+    secrets: inherit
+
+  build-analytics-service:
+    name: Docker — analytics-service
+    needs: changes
+    if: needs.changes.outputs.analytics-service == 'true'
+    uses: ./.github/workflows/_docker-build.yml
+    with:
+      service: analytics-service
+      context: services/analytics-service
+      image: ${{ github.repository_owner }}/algoverse/analytics-service
+    secrets: inherit
+
+  build-sysdesign-service:
+    name: Docker — sysdesign-service
+    needs: changes
+    if: needs.changes.outputs.sysdesign-service == 'true'
+    uses: ./.github/workflows/_docker-build.yml
+    with:
+      service: sysdesign-service
+      context: services/sysdesign-service
+      image: ${{ github.repository_owner }}/algoverse/sysdesign-service
+    secrets: inherit
+
+  build-execution-service:
+    name: Docker — execution-service
+    needs: changes
+    if: needs.changes.outputs.execution-service == 'true'
+    uses: ./.github/workflows/_docker-build.yml
+    with:
+      service: execution-service
+      context: services/execution-service
+      image: ${{ github.repository_owner }}/algoverse/execution-service
+    secrets: inherit
+
+  build-collaboration-service:
+    name: Docker — collaboration-service
+    needs: changes
+    if: needs.changes.outputs.collaboration-service == 'true'
+    uses: ./.github/workflows/_docker-build.yml
+    with:
+      service: collaboration-service
+      context: services/collaboration-service
+      image: ${{ github.repository_owner }}/algoverse/collaboration-service
+    secrets: inherit
+
+  build-ai-service:
+    name: Docker — ai-service
+    needs: changes
+    if: needs.changes.outputs.ai-service == 'true'
+    uses: ./.github/workflows/_docker-build.yml
+    with:
+      service: ai-service
+      context: services/ai-service
+      image: ${{ github.repository_owner }}/algoverse/ai-service
+    secrets: inherit
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Deploy to staging (runs after all Docker builds finish)
+  # ──────────────────────────────────────────────────────────────────────────
+  deploy-staging:
+    name: Deploy to staging
+    needs:
+      - build-web
+      - build-auth-service
+      - build-problem-service
+      - build-submission-service
+      - build-gamification-service
+      - build-analytics-service
+      - build-sysdesign-service
+      - build-execution-service
+      - build-collaboration-service
+      - build-ai-service
+    if: always() && !contains(needs.*.result, 'failure')
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://staging.algoverse.io
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: latest
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.STAGING_KUBECONFIG }}" | base64 -d > ~/.kube/config
+
+      - name: Compute image tag
+        id: tag
+        run: echo "tag=sha-${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+
+      - name: Render and apply Kubernetes manifests
+        run: |
+          TAG=${{ steps.tag.outputs.tag }}
+          REGISTRY=ghcr.io/${{ github.repository_owner }}/algoverse
+
+          # Roll out each changed service. kubectl set image is idempotent.
+          for svc in auth-service problem-service submission-service \
+                     gamification-service analytics-service sysdesign-service \
+                     execution-service collaboration-service; do
+            if kubectl get deployment "$svc" -n algoverse-staging &>/dev/null; then
+              kubectl set image deployment/"$svc" \
+                "$svc=$REGISTRY/$svc:$TAG" \
+                -n algoverse-staging
+            fi
+          done
+
+          # AI service (Python)
+          if kubectl get deployment ai-service -n algoverse-staging &>/dev/null; then
+            kubectl set image deployment/ai-service \
+              ai-service=$REGISTRY/ai-service:$TAG \
+              -n algoverse-staging
+          fi
+
+          # Web frontend
+          if kubectl get deployment web -n algoverse-staging &>/dev/null; then
+            kubectl set image deployment/web \
+              web=$REGISTRY/web:$TAG \
+              -n algoverse-staging
+          fi
+
+      - name: Wait for rollout
+        run: |
+          for svc in auth-service problem-service submission-service \
+                     gamification-service analytics-service sysdesign-service \
+                     execution-service collaboration-service ai-service web; do
+            if kubectl get deployment "$svc" -n algoverse-staging &>/dev/null; then
+              kubectl rollout status deployment/"$svc" -n algoverse-staging --timeout=5m
+            fi
+          done
+
+      - name: Smoke test staging
+        run: |
+          sleep 10
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+            https://staging.algoverse.io/api/v1/auth/health 2>/dev/null || echo "000")
+          if [ "$STATUS" != "200" ]; then
+            echo "Smoke test failed — auth-service /health returned $STATUS"
+            exit 1
+          fi
+          echo "Staging smoke test passed."

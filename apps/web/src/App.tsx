@@ -9,6 +9,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const OAuth2CallbackPage = lazy(() => import('./pages/OAuth2CallbackPage'));
 
 function PageLoader() {
   return (
@@ -103,6 +104,9 @@ export const router = createBrowserRouter([
           </RequireAuth>
         ),
       },
+
+      // OAuth2 callback — must be public (user is not yet authenticated)
+      { path: 'oauth2/callback', element: <OAuth2CallbackPage /> },
 
       // 404
       { path: '*', element: <NotFoundPage /> },

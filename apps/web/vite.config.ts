@@ -45,6 +45,35 @@ export default defineConfig({
         target: 'http://localhost:8081',
         changeOrigin: true,
       },
+      '/api/v1/execution': {
+        target: 'http://localhost:8087',
+        changeOrigin: true,
+      },
+      '/api/v1/collab': {
+        target: 'http://localhost:8088',
+        changeOrigin: true,
+      },
+      '/api/v1/gamification': {
+        target: 'http://localhost:8084',
+        changeOrigin: true,
+      },
+      '/api/v1/analytics': {
+        target: 'http://localhost:8085',
+        changeOrigin: true,
+      },
+      '/api/v1/sysdesign': {
+        target: 'http://localhost:8086',
+        changeOrigin: true,
+      },
+      '/api/v1/ai': {
+        target: 'http://localhost:8090',
+        changeOrigin: true,
+      },
+      '/ws-collab': {
+        target: 'http://localhost:8088',
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
   build: {

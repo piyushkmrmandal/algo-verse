@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { api, getErrorMessage } from '../lib/api';
@@ -10,10 +10,16 @@ import ThemeToggle from '../components/ui/ThemeToggle';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const oauthError = searchParams.get('error');
+    if (oauthError) setError(decodeURIComponent(oauthError));
+  }, [searchParams]);
 
   const { mutate, isPending } = useMutation({
     mutationFn: (data: { email: string; password: string }) =>

@@ -200,6 +200,11 @@ Always think:
 
 Your changes will be tested by OpenAI Codex platform
 
+# Git 
+
+* With every changes make sure to update the Readme file with latest necessary updates about the product or any setup ro run information
+* All commits should happen in the format "COMMIT-<A random 4 digit number> | Commit Message"
+
 ## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.

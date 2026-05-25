@@ -1,0 +1,51 @@
+##############################################################################
+# Reusable workflow: build + test a single Java/Maven service
+##############################################################################
+name: Java Service Build
+
+on:
+  workflow_call:
+    inputs:
+      service:
+        required: true
+        type: string
+        description: Service directory name under services/
+      java-version:
+        required: false
+        type: string
+        default: '21'
+
+jobs:
+  build:
+    name: Build & Test ${{ inputs.service }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/${{ inputs.service }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java ${{ inputs.java-version }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: temurin
+          cache: maven
+
+      - name: Compile
+        run: mvn compile -q
+
+      - name: Unit tests
+        run: mvn test -q
+
+      - name: Package (skip tests — already ran above)
+        run: mvn package -DskipTests -q
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ inputs.service }}
+          path: services/${{ inputs.service }}/target/surefire-reports/
+          retention-days: 7

@@ -21,18 +21,23 @@ AlgoVerse is built for software engineers who want to go beyond grinding problem
 
 | Feature | Status |
 |---|---|
-| Authentication (JWT RS256 + rotating refresh tokens) | In Progress |
-| Problem browser with search, filter, pagination | In Progress |
-| Monaco-based code editor (multi-language) | Planned |
-| Sandboxed code execution (Docker + gVisor) | In Progress |
-| Real-time submission feedback over WebSocket (STOMP) | In Progress |
+| Authentication (JWT RS256 + rotating refresh tokens) | ✅ Done |
+| OAuth2 social login (Google, GitHub, LinkedIn) | ✅ Done |
+| OAuth2 callback page (frontend) | ✅ Done |
+| Problem browser with search, filter, pagination | ✅ Done |
+| Monaco-based code editor (multi-language) | ✅ Done |
+| Sandboxed code execution (Docker + gVisor) | ✅ Done |
+| Real-time submission feedback over WebSocket (STOMP) | ✅ Done |
+| AI mentor — hints, code review, explanations (Claude) | ✅ Done |
+| Bayesian Knowledge Tracing personalization engine | ✅ Done |
+| Gamification — XP, streaks, badges, leaderboard | ✅ Done |
+| Analytics — Kafka-driven platform metrics dashboard | ✅ Done |
+| System Design module (problem catalog + AI feedback) | ✅ Done |
+| **Collaborative coding rooms (OT + WebSocket STOMP)** | ✅ Done |
+| **GitHub Actions CI/CD (per-service build+test, GHCR push)** | ✅ Done |
+| Dark/light theme with CSS variable design tokens | ✅ Done |
 | AST-based execution tracing & memory visualization | Planned |
 | Three.js algorithm visualizations | Planned |
-| AI mentor — hints, code review, explanations (Claude) | Planned |
-| Bayesian Knowledge Tracing personalization engine | Planned |
-| Gamification — XP, streaks, badges, leaderboard | Planned |
-| Collaborative coding rooms (WebRTC + CRDT) | Planned |
-| System Design module | Planned |
 | Admin panel — problem authoring, analytics | Planned |
 
 ---
@@ -158,6 +163,11 @@ make clean             # remove containers + volumes (destructive)
 | problem-service | 8082 | Spring Boot |
 | submission-service | 8083 | Spring Boot |
 | gamification-service | 8084 | Spring Boot |
+| analytics-service | 8085 | Spring Boot |
+| sysdesign-service | 8086 | Spring Boot |
+| execution-service | 8087 | Spring Boot (Docker sandbox) |
+| collaboration-service | 8088 | Spring Boot (OT + STOMP WebSocket) |
+| Kafka UI | 8089 | http://localhost:8089 |
 | ai-service (FastAPI) | 8090 | Python |
 | PostgreSQL | 5432 | |
 | Redis | 6379 | |
@@ -166,7 +176,6 @@ make clean             # remove containers + volumes (destructive)
 | Zookeeper | 2181 | |
 | Elasticsearch | 9200 | |
 | MongoDB | 27017 | |
-| Kafka UI | 8089 | http://localhost:8089 |
 
 ---
 
