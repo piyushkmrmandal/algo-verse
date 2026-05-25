@@ -1,0 +1,41 @@
+server:
+  port: 8092
+  shutdown: graceful
+
+spring:
+  application:
+    name: visualization-service
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 300000   # 5 min trace cache
+
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+visualization:
+  timeout-seconds: ${TRACE_TIMEOUT_SECONDS:10}
+  max-steps: ${TRACE_MAX_STEPS:500}
+  python-executable: ${PYTHON_EXECUTABLE:python3}
+  node-executable: ${NODE_EXECUTABLE:node}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+logging:
+  level:
+    com.algoverse.visualization: INFO

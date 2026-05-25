@@ -408,6 +408,54 @@ services:
     networks:
       - algoverse-net
 
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: algoverse-notification-service
+    restart: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8091:8091"
+    environment:
+      <<: *common-env
+      SPRING_DATASOURCE_URL: ${NOTIFICATION_DB_URL:-jdbc:postgresql://postgres:5432/notification_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-algoverse}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      SPRING_REDIS_HOST: ${REDIS_HOST:-redis}
+      SPRING_REDIS_PORT: ${REDIS_PORT:-6379}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      SERVER_PORT: 8091
+    networks:
+      - algoverse-net
+
+  visualization-service:
+    build:
+      context: ./services/visualization-service
+      dockerfile: Dockerfile
+    container_name: algoverse-visualization-service
+    restart: on-failure
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "8092:8092"
+    environment:
+      <<: *common-env
+      SPRING_REDIS_HOST: ${REDIS_HOST:-redis}
+      SPRING_REDIS_PORT: ${REDIS_PORT:-6379}
+      TRACE_TIMEOUT_SECONDS: 10
+      TRACE_MAX_STEPS: 500
+      SERVER_PORT: 8092
+    networks:
+      - algoverse-net
+
   # ──────────────────────────────────────────────────────────────────────────
   # Frontend (commented out — run with `make web` or `npm run dev`)
   # ──────────────────────────────────────────────────────────────────────────

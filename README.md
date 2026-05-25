@@ -35,8 +35,10 @@ AlgoVerse is built for software engineers who want to go beyond grinding problem
 | System Design module (problem catalog + AI feedback) | ✅ Done |
 | **Collaborative coding rooms (OT + WebSocket STOMP)** | ✅ Done |
 | **GitHub Actions CI/CD (per-service build+test, GHCR push)** | ✅ Done |
+| **Notification service (in-app + SES email + FCM push)** | ✅ Done |
+| **AST-based execution tracing (Python sys.settrace + Node vm)** | ✅ Done |
 | Dark/light theme with CSS variable design tokens | ✅ Done |
-| AST-based execution tracing & memory visualization | Planned |
+| Three.js algorithm visualizations | Planned |
 | Three.js algorithm visualizations | Planned |
 | Admin panel — problem authoring, analytics | Planned |
 
@@ -169,6 +171,8 @@ make clean             # remove containers + volumes (destructive)
 | collaboration-service | 8088 | Spring Boot (OT + STOMP WebSocket) |
 | Kafka UI | 8089 | http://localhost:8089 |
 | ai-service (FastAPI) | 8090 | Python |
+| notification-service | 8091 | Spring Boot (in-app, SES email, FCM push) |
+| visualization-service | 8092 | Spring Boot (Python + Node.js AST tracers) |
 | PostgreSQL | 5432 | |
 | Redis | 6379 | |
 | Kafka (Docker internal) | 9092 | Use `kafka:9092` inside Docker |
@@ -176,6 +180,43 @@ make clean             # remove containers + volumes (destructive)
 | Zookeeper | 2181 | |
 | Elasticsearch | 9200 | |
 | MongoDB | 27017 | |
+
+---
+
+## Testing
+
+### Unit Tests (Mockito — no infra required)
+```bash
+JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn test -pl services/analytics-service
+JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn test -pl services/submission-service
+JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn test -pl services/sysdesign-service
+```
+
+### Integration Tests (Testcontainers — Docker required)
+```bash
+# Spins up PostgreSQL, MongoDB, Redis automatically via Docker
+JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/analytics-service  -P integration
+JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/submission-service -P integration
+JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/sysdesign-service  -P integration
+```
+
+### Load Tests (k6)
+```bash
+# Requires k6 (brew install k6) and a running collaboration-service
+k6 run testing/load/scripts/collaboration.js
+# Or against staging:
+BASE_URL=http://staging.algoverse.io:8088 WS_URL=ws://staging.algoverse.io:8088 \
+  k6 run testing/load/scripts/collaboration.js
+```
+
+### E2E Tests (Playwright)
+```bash
+cd testing/e2e
+npm install
+# Requires full stack running (make up)
+npx playwright test tests/collaboration/collaboration.spec.ts
+npx playwright test --ui  # interactive mode
+```
 
 ---
 

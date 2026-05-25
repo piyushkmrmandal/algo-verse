@@ -10,6 +10,7 @@ CREATE DATABASE analytics_db;
 CREATE DATABASE sysdesign_db;
 CREATE DATABASE execution_db;
 CREATE DATABASE collaboration_db;
+CREATE DATABASE notification_db;
 
 -- Grant all privileges to the algoverse user (set via POSTGRES_USER)
 GRANT ALL PRIVILEGES ON DATABASE auth_db TO algoverse;
@@ -21,3 +22,4 @@ GRANT ALL PRIVILEGES ON DATABASE analytics_db TO algoverse;
 GRANT ALL PRIVILEGES ON DATABASE sysdesign_db TO algoverse;
 GRANT ALL PRIVILEGES ON DATABASE execution_db TO algoverse;
 GRANT ALL PRIVILEGES ON DATABASE collaboration_db TO algoverse;
+GRANT ALL PRIVILEGES ON DATABASE notification_db TO algoverse;

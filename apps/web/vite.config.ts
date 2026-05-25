@@ -74,6 +74,14 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
+      '/api/v1/visualize': {
+        target: 'http://localhost:8092',
+        changeOrigin: true,
+      },
+      '/api/v1/notifications': {
+        target: 'http://localhost:8091',
+        changeOrigin: true,
+      },
     },
   },
   build: {
