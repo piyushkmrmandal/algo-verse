@@ -1,0 +1,50 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: sysdesign-service
+  datasource:
+    url: ${SYSDESIGN_DB_URL:jdbc:postgresql://localhost:5432/sysdesign_db}
+    username: ${DB_USERNAME:algoverse}
+    password: ${DB_PASSWORD:secret}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/sysdesigndb}
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      database: 5
+
+jwt:
+  public-key: ${JWT_PUBLIC_KEY:}
+
+ai-service:
+  base-url: ${AI_SERVICE_URL:http://localhost:8090}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.algoverse.sysdesign: DEBUG
+    org.springframework.security: WARN

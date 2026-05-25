@@ -322,6 +322,35 @@ services:
     networks:
       - algoverse-net
 
+  sysdesign-service:
+    build:
+      context: ./services/sysdesign-service
+      dockerfile: Dockerfile
+    container_name: algoverse-sysdesign-service
+    restart: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8086:8086"
+    environment:
+      <<: *common-env
+      SYSDESIGN_DB_URL: ${SYSDESIGN_DB_URL:-jdbc:postgresql://postgres:5432/sysdesign_db}
+      DB_USERNAME: ${POSTGRES_USER:-algoverse}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongodb:27017/sysdesigndb}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai-service:8090}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+      SERVER_PORT: 8086
+    networks:
+      - algoverse-net
+
   # ──────────────────────────────────────────────────────────────────────────
   # Frontend (commented out — run with `make web` or `npm run dev`)
   # ──────────────────────────────────────────────────────────────────────────
