@@ -40,11 +40,18 @@ public class User {
     @Column(name = "password_hash", nullable = true)
     private String passwordHash;
 
-    @Column(name = "display_name", nullable = false, length = 100)
+    @Column(name = "display_name", length = 100)
     private String displayName;
 
     @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
+
+    @Column(name = "provider", length = 50)
+    @Builder.Default
+    private String provider = "LOCAL";
+
+    @Column(name = "provider_id", length = 255)
+    private String providerId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 20)

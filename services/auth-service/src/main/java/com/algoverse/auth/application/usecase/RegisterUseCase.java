@@ -4,10 +4,8 @@ import com.algoverse.auth.application.dto.AuthResponse;
 import com.algoverse.auth.application.dto.RegisterRequest;
 import com.algoverse.auth.application.dto.UserDto;
 import com.algoverse.auth.domain.exception.ConflictException;
-import com.algoverse.auth.domain.model.RefreshToken;
 import com.algoverse.auth.domain.model.User;
 import com.algoverse.auth.domain.model.UserRole;
-import com.algoverse.auth.domain.repository.RefreshTokenRepository;
 import com.algoverse.auth.domain.repository.UserRepository;
 import com.algoverse.auth.infrastructure.kafka.UserEventProducer;
 import com.algoverse.auth.infrastructure.security.JwtProperties;
@@ -18,15 +16,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class RegisterUseCase {
 
     private final UserRepository userRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
     private final JwtService jwtService;
     private final JwtProperties jwtProperties;
     private final PasswordEncoder passwordEncoder;
@@ -56,16 +51,9 @@ public class RegisterUseCase {
         log.info("User created successfully with id: {}", user.getId());
 
         String rawAccessToken = jwtService.generateAccessToken(user);
-        String rawRefreshToken = jwtService.generateRefreshToken();
-        String hashedRefreshToken = passwordEncoder.encode(rawRefreshToken);
-
-        RefreshToken refreshTokenEntity = RefreshToken.builder()
-                .tokenHash(hashedRefreshToken)
-                .userId(user.getId())
-                .expiresAt(Instant.now().plusSeconds(jwtProperties.getRefreshTokenExpiry()))
-                .build();
-
-        refreshTokenRepository.save(refreshTokenEntity);
+        String refreshTokenId = jwtService.generateRefreshToken(user);
+        // Composite token: userId:tokenId
+        String rawRefreshToken = user.getId() + ":" + refreshTokenId;
 
         userEventProducer.publishUserRegistered(user);
 

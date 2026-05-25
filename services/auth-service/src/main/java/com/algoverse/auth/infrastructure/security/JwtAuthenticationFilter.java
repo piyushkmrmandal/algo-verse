@@ -1,9 +1,8 @@
 package com.algoverse.auth.infrastructure.security;
 
+import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,7 +10,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -36,10 +34,8 @@ import java.util.UUID;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
-    private static final String BLOCKLIST_PREFIX = "blocklist:jti:";
 
     private final JwtService jwtService;
-    private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -57,17 +53,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         try {
-            Claims claims = jwtService.validateAccessToken(token);
+            DecodedJWT jwt = jwtService.validateToken(token);
 
-            String jti = claims.getId();
-            if (jti != null && Boolean.TRUE.equals(redisTemplate.hasKey(BLOCKLIST_PREFIX + jti))) {
+            String jti = jwt.getId();
+            if (jti != null && jwtService.isBlacklisted(jti)) {
                 sendUnauthorized(response, "Token has been revoked");
                 return;
             }
 
-            UUID userId = jwtService.extractUserId(claims);
-            String role = claims.get("role", String.class);
-            String email = claims.get("email", String.class);
+            UUID userId = jwtService.extractUserId(jwt);
+            String role = jwt.getClaim("role").asString();
+            String email = jwt.getClaim("email").asString();
 
             MDC.put("traceId", userId.toString());
             MDC.put("userId", userId.toString());
@@ -78,21 +74,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     List.of(new SimpleGrantedAuthority("ROLE_" + role))
             );
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            authentication.getDetails();
 
             request.setAttribute("userId", userId);
             request.setAttribute("jti", jti);
-            request.setAttribute("claims", claims);
+            request.setAttribute("jwtExpiry", jwt.getExpiresAtAsInstant());
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
             filterChain.doFilter(request, response);
 
-        } catch (ExpiredJwtException e) {
-            log.warn("JWT token expired for request: {}", request.getRequestURI());
-            sendUnauthorized(response, "Token has expired");
-        } catch (JwtException e) {
-            log.warn("Invalid JWT token for request: {}", request.getRequestURI());
-            sendUnauthorized(response, "Invalid token");
+        } catch (JWTVerificationException e) {
+            log.warn("JWT validation failed for {}: {}", request.getRequestURI(), e.getMessage());
+            sendUnauthorized(response, "Invalid or expired token");
         } finally {
             MDC.remove("traceId");
             MDC.remove("userId");

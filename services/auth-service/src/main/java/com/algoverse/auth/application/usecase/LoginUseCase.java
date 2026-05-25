@@ -5,9 +5,7 @@ import com.algoverse.auth.application.dto.LoginRequest;
 import com.algoverse.auth.application.dto.UserDto;
 import com.algoverse.auth.domain.exception.ForbiddenException;
 import com.algoverse.auth.domain.exception.UnauthorizedException;
-import com.algoverse.auth.domain.model.RefreshToken;
 import com.algoverse.auth.domain.model.User;
-import com.algoverse.auth.domain.repository.RefreshTokenRepository;
 import com.algoverse.auth.domain.repository.UserRepository;
 import com.algoverse.auth.infrastructure.security.JwtProperties;
 import com.algoverse.auth.infrastructure.security.JwtService;
@@ -17,15 +15,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class LoginUseCase {
 
     private final UserRepository userRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
     private final JwtService jwtService;
     private final JwtProperties jwtProperties;
     private final PasswordEncoder passwordEncoder;
@@ -51,16 +46,8 @@ public class LoginUseCase {
         }
 
         String rawAccessToken = jwtService.generateAccessToken(user);
-        String rawRefreshToken = jwtService.generateRefreshToken();
-        String hashedRefreshToken = passwordEncoder.encode(rawRefreshToken);
-
-        RefreshToken refreshTokenEntity = RefreshToken.builder()
-                .tokenHash(hashedRefreshToken)
-                .userId(user.getId())
-                .expiresAt(Instant.now().plusSeconds(jwtProperties.getRefreshTokenExpiry()))
-                .build();
-
-        refreshTokenRepository.save(refreshTokenEntity);
+        String refreshTokenId = jwtService.generateRefreshToken(user);
+        String rawRefreshToken = user.getId() + ":" + refreshTokenId;
         log.info("User logged in successfully: {}", user.getId());
 
         UserDto userDto = new UserDto(

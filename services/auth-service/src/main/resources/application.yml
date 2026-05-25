@@ -8,9 +8,9 @@ spring:
     name: auth-service
 
   datasource:
-    url: ${AUTH_DB_URL:jdbc:postgresql://localhost:5432/algoverse_auth}
-    username: ${AUTH_DB_USERNAME:postgres}
-    password: ${AUTH_DB_PASSWORD:postgres}
+    url: ${AUTH_DB_URL:jdbc:postgresql://localhost:5432/auth_db}
+    username: ${DB_USERNAME:algoverse}
+    password: ${DB_PASSWORD:secret}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
@@ -41,14 +41,39 @@ spring:
   data:
     redis:
       host: ${REDIS_HOST:localhost}
-      port: 6379
-      password: ${REDIS_PASSWORD:}
+      port: ${REDIS_PORT:6379}
+      database: 0
       timeout: 2000ms
       lettuce:
         pool:
           max-active: 16
           max-idle: 8
           min-idle: 2
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:changeme}
+            client-secret: ${GOOGLE_CLIENT_SECRET:changeme}
+            scope: email,profile
+          github:
+            client-id: ${GITHUB_CLIENT_ID:changeme}
+            client-secret: ${GITHUB_CLIENT_SECRET:changeme}
+            scope: user:email
+          linkedin:
+            client-id: ${LINKEDIN_CLIENT_ID:changeme}
+            client-secret: ${LINKEDIN_CLIENT_SECRET:changeme}
+            scope: openid,profile,email
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+        provider:
+          linkedin:
+            authorization-uri: https://www.linkedin.com/oauth/v2/authorization
+            token-uri: https://www.linkedin.com/oauth/v2/accessToken
+            user-info-uri: https://api.linkedin.com/v2/userinfo
+            user-name-attribute: sub
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
@@ -62,10 +87,11 @@ spring:
         max.in.flight.requests.per.connection: 1
 
 jwt:
-  private-key: ${JWT_PRIVATE_KEY}
-  public-key: ${JWT_PUBLIC_KEY}
-  access-token-expiry: 900
-  refresh-token-expiry: 2592000
+  # If not set, an ephemeral RSA key pair is generated at startup (local dev only)
+  private-key: ${JWT_PRIVATE_KEY:}
+  public-key: ${JWT_PUBLIC_KEY:}
+  access-token-expiry: 900       # 15 min in seconds
+  refresh-token-expiry: 604800   # 7 days in seconds
 
 management:
   endpoints:

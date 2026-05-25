@@ -13,7 +13,6 @@ import com.algoverse.auth.domain.exception.UnauthorizedException;
 import com.algoverse.auth.domain.model.User;
 import com.algoverse.auth.domain.repository.UserRepository;
 import com.algoverse.auth.infrastructure.security.JwtService;
-import io.jsonwebtoken.Claims;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -37,7 +36,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
-import java.util.Date;
 import java.util.UUID;
 
 @Slf4j
@@ -108,15 +106,7 @@ public class AuthController {
             HttpServletRequest httpRequest
     ) {
         String jti = (String) httpRequest.getAttribute("jti");
-        Claims claims = (Claims) httpRequest.getAttribute("claims");
-
-        Instant accessTokenExpiry = null;
-        if (claims != null) {
-            Date exp = claims.getExpiration();
-            if (exp != null) {
-                accessTokenExpiry = exp.toInstant();
-            }
-        }
+        Instant accessTokenExpiry = (Instant) httpRequest.getAttribute("jwtExpiry");
 
         String rawRefreshToken = request != null ? request.refreshToken() : null;
         logoutUseCase.execute(rawRefreshToken, jti, accessTokenExpiry);
