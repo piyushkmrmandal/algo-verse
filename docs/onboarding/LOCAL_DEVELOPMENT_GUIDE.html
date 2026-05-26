@@ -180,7 +180,7 @@
     <span>📅 Updated: 2026-05-26</span>
     <span>🐳 Docker Desktop 4.x required</span>
     <span>☕ Java 21 · 🐍 Python 3.12 · 🟦 Node.js 20+</span>
-    <span>📖 Version 1.0</span>
+    <span>📖 Version 2.0 — Ollama AI · Cinematic Landing · Full Test Suite</span>
   </div>
 </div>
 
@@ -317,7 +317,8 @@ cp .env.example .env</code></pre>
   <tr><td><code>KAFKA_BOOTSTRAP_SERVERS</code></td><td>localhost:29092</td><td>No</td><td>Use <code>kafka:9092</code> inside Docker, <code>localhost:29092</code> outside</td></tr>
   <tr><td><code>JWT_SECRET</code></td><td>—</td><td><strong>Yes</strong></td><td>HS256 secret for auth tokens (min 32 chars)</td></tr>
   <tr><td><code>JWT_PUBLIC_KEY</code></td><td>—</td><td>Needed by downstream services</td><td>RS256 public key PEM (used by execution, collab, analytics, sysdesign)</td></tr>
-  <tr><td><code>ANTHROPIC_API_KEY</code></td><td>—</td><td><strong>Yes</strong> for AI features</td><td>Anthropic Claude API key from <a href="https://console.anthropic.com">console.anthropic.com</a></td></tr>
+  <tr><td><code>OLLAMA_BASE_URL</code></td><td>http://localhost:11434</td><td>No</td><td>Ollama REST endpoint. Default works when <code>ollama serve</code> is running locally. Change if Ollama is on another host.</td></tr>
+  <tr><td><code>AI_MODEL</code></td><td>qwen2.5-coder:7b</td><td>No</td><td>Ollama model tag. Pull once with <code>ollama pull qwen2.5-coder:7b</code>. No API key required.</td></tr>
   <tr><td><code>AUTH_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/auth_db</td><td>No</td><td>auth-service JDBC URL</td></tr>
   <tr><td><code>PROBLEM_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/problem_db</td><td>No</td><td>problem-service JDBC URL</td></tr>
   <tr><td><code>SUBMISSION_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/submission_db</td><td>No</td><td>submission-service JDBC URL</td></tr>
@@ -724,7 +725,7 @@ docker run -d --name algoverse-submission-service --network algoverse-net -p 808
     <span class="svc-name">gamification-service</span>
     <span class="svc-port">:8084</span>
   </div>
-  <div class="svc-desc">XP system, streak tracking, badge award engine, leaderboard. Consumes <code>algoverse.submission.graded</code> and <code>algoverse.user.registered</code> events. The V2 Flyway migration seeds 8 badge definitions.</div>
+  <div class="svc-desc">XP system, streak tracking, badge award engine, leaderboard. Consumes <code>algoverse.submission.graded</code> and <code>algoverse.user.registered</code> events. The V2 Flyway migration seeds 8 badge definitions. <strong>Upgraded to Spring Boot 3.3.0</strong> (Flyway 10 + <code>flyway-database-postgresql</code> BOM).</div>
   <div class="deps">
     <span class="dep infra">PostgreSQL → gamification_db</span>
     <span class="dep infra">Redis (leaderboard sorted sets)</span>
@@ -907,12 +908,26 @@ docker run -d --name algoverse-collaboration-service --network algoverse-net -p 
     <span class="svc-name">ai-service</span>
     <span class="svc-port python">:8090</span>
   </div>
-  <div class="svc-desc">FastAPI service wrapping Anthropic Claude. Provides AI hints, code review, Bayesian Knowledge Tracing (BKT) personalization, and system design feedback. Requires a valid <code>ANTHROPIC_API_KEY</code>.</div>
+  <div class="svc-desc">FastAPI service powered by <strong>Ollama</strong> (open-source local LLM — <em>no API key required</em>). Provides streaming AI hints, code review, Bayesian Knowledge Tracing (BKT) personalization, and system design feedback. All LLM calls go through the Ollama REST API at <code>http://localhost:11434</code> via plain <code>httpx</code>.</div>
   <div class="deps">
     <span class="dep infra">PostgreSQL → ai_db</span>
     <span class="dep infra">Redis</span>
     <span class="dep infra">Kafka</span>
-    <span class="dep">ANTHROPIC_API_KEY</span>
+    <span class="dep">Ollama running locally</span>
+  </div>
+
+  <div class="card info" style="margin-bottom:12px">
+    <div class="card-title">ℹ️ Ollama one-time setup (macOS)</div>
+    <pre style="margin:4px 0 0"><code><span class="comment"># Install Ollama</span>
+brew install ollama
+
+<span class="comment"># Pull the default model (≈4 GB download, one-time)</span>
+ollama pull qwen2.5-coder:7b
+
+<span class="comment"># Start the Ollama server (keep running in a terminal)</span>
+ollama serve</code></pre>
+    Ollama listens on <code>http://localhost:11434</code> by default.
+    Any model available at <a href="https://ollama.com/library">ollama.com/library</a> works — change <code>AI_MODEL</code> env var to switch.
   </div>
 
   <h4>A) Run locally (virtualenv)</h4>
@@ -925,12 +940,13 @@ source .venv/bin/activate          <span class="comment"># Windows: .venv\Script
 <span class="comment"># Install dependencies</span>
 pip install -r requirements.txt
 
-<span class="comment"># Run dev server</span>
+<span class="comment"># Run dev server (Ollama must already be running)</span>
 AI_DB_URL=postgresql+asyncpg://algoverse:secret@localhost:5432/ai_db \
   REDIS_HOST=localhost \
   REDIS_PORT=6379 \
   KAFKA_BOOTSTRAP_SERVERS=localhost:29092 \
-  ANTHROPIC_API_KEY=sk-ant-YOUR_KEY_HERE \
+  OLLAMA_BASE_URL=http://localhost:11434 \
+  AI_MODEL=qwen2.5-coder:7b \
   uvicorn app.main:app --host 0.0.0.0 --port 8090 --reload</code></pre>
 
   <h4>B) Docker</h4>
@@ -939,8 +955,10 @@ docker run -d --name algoverse-ai-service --network algoverse-net -p 8090:8090 \
   -e AI_DB_URL=postgresql+asyncpg://algoverse:secret@algoverse-postgres:5432/ai_db \
   -e REDIS_HOST=algoverse-redis \
   -e KAFKA_BOOTSTRAP_SERVERS=algoverse-kafka:9092 \
-  -e ANTHROPIC_API_KEY=sk-ant-YOUR_KEY_HERE \
-  algoverse/ai-service:local</code></pre>
+  -e OLLAMA_BASE_URL=http://host.docker.internal:11434 \
+  -e AI_MODEL=qwen2.5-coder:7b \
+  algoverse/ai-service:local
+<span class="comment"># Note: host.docker.internal reaches Ollama running on the Mac host from inside Docker</span></code></pre>
 
   <h4>Health</h4>
 <pre><code>curl http://localhost:8090/health
@@ -1071,7 +1089,8 @@ VITE_API_BASE_URL=http://localhost:8081</code></pre>
   <div class="step-body">
     <strong>Copy and configure environment</strong>
     <pre><code>cp .env.example .env
-<span class="comment"># Edit .env — at minimum set ANTHROPIC_API_KEY and JWT_SECRET</span></code></pre>
+<span class="comment"># Edit .env — at minimum set JWT_SECRET</span>
+<span class="comment"># No API keys needed — AI runs via local Ollama (see Section 7.9)</span></code></pre>
   </div>
 </div>
 
@@ -1177,7 +1196,7 @@ curl http://localhost/api/auth/actuator/health</code></pre>
   <tr><td>execution-service</td><td>8087</td><td>HTTP + STOMP/WS</td><td>Sandboxed Docker code execution</td></tr>
   <tr><td>collaboration-service</td><td>8088</td><td>HTTP + STOMP/WS</td><td>Real-time OT collaborative coding</td></tr>
   <tr><td>Kafka UI</td><td>8089</td><td>HTTP</td><td>Browse topics, messages, consumer groups</td></tr>
-  <tr><td>ai-service</td><td>8090</td><td>HTTP</td><td>FastAPI + Anthropic Claude SDK</td></tr>
+  <tr><td>ai-service</td><td>8090</td><td>HTTP + SSE</td><td>FastAPI + Ollama (open-source LLM, no API key)</td></tr>
   <tr><td>notification-service</td><td>8091</td><td>HTTP</td><td>In-app bell, SES email, FCM push</td></tr>
   <tr><td>visualization-service</td><td>8092</td><td>HTTP</td><td>Python/JS AST execution tracing</td></tr>
   <tr><td>PostgreSQL</td><td>5432</td><td>TCP</td><td>10 logical databases</td></tr>
@@ -1265,11 +1284,20 @@ docker exec algoverse-kafka kafka-consumer-groups \
   On Linux, add the container user to the <code>docker</code> group.
 </div>
 
-<h3>ai-service fails with "ANTHROPIC_API_KEY not set"</h3>
+<h3>ai-service returns 503 or hints don't stream</h3>
 <div class="card warn">
-  <strong>Cause:</strong> Missing API key in <code>.env</code>.<br/>
-  <strong>Fix:</strong> Get a key at <a href="https://console.anthropic.com">console.anthropic.com</a> and set <code>ANTHROPIC_API_KEY=sk-ant-...</code> in <code>.env</code>.
-  AI features (hints, code review, sysdesign feedback) will be unavailable without it.
+  <strong>Cause:</strong> Ollama is not running or the model hasn't been pulled.<br/>
+  <strong>Fix:</strong>
+  <pre style="margin:6px 0 0"><code><span class="comment"># 1. Start Ollama</span>
+ollama serve
+
+<span class="comment"># 2. Pull the model (one-time, ~4 GB)</span>
+ollama pull qwen2.5-coder:7b
+
+<span class="comment"># 3. Verify Ollama responds</span>
+curl http://localhost:11434/api/tags
+<span class="comment"># Should list qwen2.5-coder:7b in the models array</span></code></pre>
+  No API key or cloud account is required — everything runs locally.
 </div>
 
 <h3>Frontend cannot connect to backend (CORS errors)</h3>
@@ -1295,13 +1323,52 @@ kill -9 &lt;PID&gt;</code></pre>
 ══════════════════════════════════════════════════════════════════════════ -->
 <h2 id="whats-left">14. What's Left to Build</h2>
 
-<h3>🔴 In Progress</h3>
+<h3>✅ Recently Completed (this sprint)</h3>
 <table>
-  <tr><th>#</th><th>Item</th><th>Details</th></tr>
+  <tr><th>Item</th><th>Details</th></tr>
   <tr>
-    <td>8</td>
-    <td>Unit tests — analytics, submission, sysdesign services</td>
-    <td>Mockito unit tests covering use-cases, service impl classes, and REST controllers for these 3 services. Pattern already established in notification-service.</td>
+    <td><strong>Cinematic landing page</strong></td>
+    <td>Matrix-rain canvas, Framer Motion staggered animations, typewriter DSA snippets, auth-aware CTAs. Route <code>/</code> now shows <code>IntroPage</code> instead of redirecting.</td>
+  </tr>
+  <tr>
+    <td><strong>AI service → Ollama migration</strong></td>
+    <td>Replaced Anthropic Claude SDK with <code>httpx</code>-powered <code>ollama_client.py</code>. Default model: <code>qwen2.5-coder:7b</code>. No API key required. All streaming SSE intact.</td>
+  </tr>
+  <tr>
+    <td><strong>Maven integration profiles — all 9 services</strong></td>
+    <td><code>-P integration</code> profile with surefire exclusion + failsafe inclusion added to: analytics, submission, sysdesign, notification, visualization, auth, collaboration, execution, problem, gamification.</td>
+  </tr>
+  <tr>
+    <td><strong>Testcontainers integration tests — auth-service</strong></td>
+    <td>10 tests: contextLoads, health, register 201/400/409, login 200/401, /me 401/200, refresh 200. Containers: PostgreSQL 16-alpine + Redis 7-alpine.</td>
+  </tr>
+  <tr>
+    <td><strong>Testcontainers integration tests — collaboration-service</strong></td>
+    <td>6 tests: contextLoads, health, security 401 on all endpoints. JWT disabled via <code>@DynamicPropertySource</code>.</td>
+  </tr>
+  <tr>
+    <td><strong>Testcontainers integration tests — execution-service</strong></td>
+    <td>6 tests: contextLoads, health, security 401 checks. Null-safe JWT filter activated via empty public key.</td>
+  </tr>
+  <tr>
+    <td><strong>Testcontainers integration tests — problem-service</strong></td>
+    <td>7 tests: contextLoads, health, public GET /problems, search, topics, slug lookup, security 401. Four containers: PostgreSQL + MongoDB + Redis + Elasticsearch 8.11.1.</td>
+  </tr>
+  <tr>
+    <td><strong>Testcontainers integration tests — gamification-service</strong></td>
+    <td>Spring Boot upgraded 3.2.5 → 3.3.0 + integration profile with PostgreSQL + Redis containers.</td>
+  </tr>
+  <tr>
+    <td><strong>Null-safe JWT filter</strong></td>
+    <td>execution-service + problem-service: <code>parsePublicKey("")</code> returns <code>null</code> (warning log) instead of throwing. Filter passes through when <code>publicKey == null</code>. Enables integration tests without real RSA keys.</td>
+  </tr>
+  <tr>
+    <td><strong>Gamification component fixes</strong></td>
+    <td><code>StreakTracker</code> + <code>XpCounter</code>: added named exports, updated prop interfaces to match DashboardPage API response shape, null-guarded <code>parseDate</code> against undefined <code>lastSolvedDate</code>.</td>
+  </tr>
+  <tr>
+    <td><strong>Demo video</strong></td>
+    <td>Playwright frame-capture spec (<code>testing/e2e/tests/capture/</code>) screenshots all 10 pages. ffmpeg stitches into <code>algoverse-demo.mp4</code> (35s, H.264 1280×800, 25fps).</td>
   </tr>
 </table>
 
@@ -1309,19 +1376,14 @@ kill -9 &lt;PID&gt;</code></pre>
 <table>
   <tr><th>#</th><th>Item</th><th>Details</th></tr>
   <tr>
-    <td>9</td>
-    <td>Testcontainers integration tests — analytics, submission, sysdesign</td>
-    <td>PostgreSQL + MongoDB/Redis containers. Pattern already done for notification-service and visualization-service.</td>
-  </tr>
-  <tr>
     <td>10</td>
     <td>k6 load test — collaboration-service WebSocket</td>
-    <td>Simulate 200 concurrent rooms with 2 participants each. Test OT throughput. Script goes in <code>testing/load/scripts/collaboration.js</code>.</td>
+    <td>Simulate 200 concurrent rooms × 2 participants = 400 WebSocket connections. Test OT throughput under load. Script: <code>testing/load/scripts/collaboration.js</code>.</td>
   </tr>
   <tr>
     <td>11</td>
-    <td>Playwright E2E tests — collaboration flow</td>
-    <td>Two-browser test: user A creates room → shares code → user B joins → both type → assert OT convergence. Lives in <code>testing/e2e/</code>.</td>
+    <td>Playwright E2E — collaboration flow</td>
+    <td>Two-browser test: user A creates room → user B joins via code → both type simultaneously → assert OT convergence; disconnect → reconnect → state restored. Lives in <code>testing/e2e/tests/collaboration/</code>.</td>
   </tr>
 </table>
 
@@ -1330,32 +1392,32 @@ kill -9 &lt;PID&gt;</code></pre>
   <tr><th>Feature</th><th>Details</th></tr>
   <tr>
     <td>Three.js algorithm visualizations</td>
-    <td>3D animated visualizations of sorting algorithms (quicksort, mergesort), tree traversal, graph BFS/DFS — powered by React Three Fiber. Integrates with visualization-service trace data.</td>
+    <td>3D animated visualizations of sorting algorithms, tree traversal, graph BFS/DFS — powered by React Three Fiber. Integrates with visualization-service trace data.</td>
   </tr>
   <tr>
     <td>Admin panel</td>
-    <td>Problem authoring UI (Markdown editor + test case manager), platform analytics dashboard, user management. Requires a new <code>/admin</code> frontend route + <code>ROLE=ADMIN</code> guard.</td>
+    <td>Problem authoring UI (Markdown editor + test case manager), platform analytics dashboard, user management. Requires a new <code>/admin</code> route + <code>ROLE=ADMIN</code> guard.</td>
   </tr>
   <tr>
-    <td>OpenAPI specs — missing services</td>
-    <td>gamification-service, analytics-service, notification-service, visualization-service, sysdesign-service need <code>openapi.yaml</code> specs added to <code>docs/api/</code>.</td>
+    <td>OpenAPI specs — remaining services</td>
+    <td>gamification-service, analytics-service, notification-service, visualization-service, sysdesign-service still need <code>openapi.yaml</code> in <code>docs/api/</code>.</td>
+  </tr>
+  <tr>
+    <td>Frontend component unit tests</td>
+    <td>Vitest + React Testing Library tests for XpCounter, StreakTracker, AppNav, Monaco editor wrapper. <code>data-testid</code> attributes are already in place on key pages.</td>
+  </tr>
+  <tr>
+    <td>Email / Push activation</td>
+    <td>notification-service has SES + Firebase stubs with <code>EMAIL_ENABLED=false</code> / <code>PUSH_ENABLED=false</code>. Needs real AWS SES credentials and Firebase service account JSON.</td>
   </tr>
   <tr>
     <td>Kubernetes manifests</td>
     <td>Helm charts or raw manifests for all 11 services in <code>infrastructure/kubernetes/</code>. Terraform EKS cluster config exists but service manifests are incomplete.</td>
   </tr>
-  <tr>
-    <td>Frontend component unit tests</td>
-    <td>Vitest + React Testing Library tests for XpCounter, StreakTracker, AppNav, and editor components. <code>data-testid</code> attributes are already in place.</td>
-  </tr>
-  <tr>
-    <td>Email / Push configuration</td>
-    <td>notification-service has SES + Firebase stubs. Needs real AWS SES credentials and Firebase service account JSON to activate.</td>
-  </tr>
 </table>
 
 <div class="footer">
-  AlgoVerse &mdash; Local Development Guide &mdash; v1.0 &mdash; 2026-05-26<br/>
+  AlgoVerse &mdash; Local Development Guide &mdash; v2.0 &mdash; 2026-05-26<br/>
   Questions? Open an issue or reach out at <a href="mailto:piyushkmrmandal@gmail.com">piyushkmrmandal@gmail.com</a>
 </div>
 

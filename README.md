@@ -4,6 +4,8 @@
 
 AlgoVerse is a next-generation engineering education platform that combines cinematic UX, real-time algorithm visualizations, AST-based execution tracing, and an AI mentor — all in a single, beautifully crafted experience. Think LeetCode reimagined from first principles, with a Bayesian personalization engine that adapts every problem recommendation to your exact knowledge state.
 
+> 🎬 **Demo video:** [`algoverse-demo.mp4`](./algoverse-demo.mp4) — 35-second walkthrough of all 10 pages (landing → problems → IDE → dashboard → sysdesign → collab room).
+
 ---
 
 ## What Is AlgoVerse?
@@ -56,8 +58,11 @@ AlgoVerse is built for software engineers who want to go beyond grinding problem
 | **AI service migrated from Anthropic Claude → Ollama (open-source LLM, no API key required)** | ✅ Done |
 | **Gamification component null-safety — StreakTracker + XpCounter prop interface fixes** | ✅ Done |
 | **Demo video — Playwright frame capture + ffmpeg stitched walkthrough (algoverse-demo.mp4)** | ✅ Done |
-| Three.js algorithm visualizations | Planned |
-| Admin panel — problem authoring, analytics | Planned |
+| Three.js algorithm visualizations | 🔵 Planned |
+| Admin panel — problem authoring, analytics | 🔵 Planned |
+| k6 load test — collaboration WebSocket (200 rooms × 2 users) | 🟡 Pending |
+| Playwright E2E — two-browser OT convergence test | 🟡 Pending |
+| Frontend unit tests — Vitest + RTL for XpCounter, StreakTracker | 🟡 Pending |
 
 ---
 
@@ -252,6 +257,17 @@ npm install
 # Requires full stack running (make up)
 npx playwright test tests/collaboration/collaboration.spec.ts
 npx playwright test --ui  # interactive mode
+```
+
+### Demo Video Capture (Playwright + ffmpeg)
+```bash
+cd testing/e2e
+# Capture screenshots of all 10 pages into /tmp/algoverse-video/frames/
+npx playwright test tests/capture/capture_frames.spec.ts --project=chromium
+
+# Stitch into video (requires ffmpeg: brew install ffmpeg)
+bash /tmp/algoverse-video/make_video.sh
+# Output: algoverse-demo.mp4 (35s, H.264, 1280×800)
 ```
 
 ---
