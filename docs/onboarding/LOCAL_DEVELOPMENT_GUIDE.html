@@ -180,7 +180,7 @@
     <span>📅 Updated: 2026-05-26</span>
     <span>🐳 Docker Desktop 4.x required</span>
     <span>☕ Java 21 · 🐍 Python 3.12 · 🟦 Node.js 20+</span>
-    <span>📖 Version 2.0 — Ollama AI · Cinematic Landing · Full Test Suite</span>
+    <span>📖 Version 2.1 — Three.js Visualizer · RS256 JWT · Full .env coverage</span>
   </div>
 </div>
 
@@ -308,31 +308,59 @@ cp .env.example .env</code></pre>
 <p>Open <code>.env</code> and fill in the required values. The table below describes every variable:</p>
 
 <table>
-  <tr><th>Variable</th><th>Default</th><th>Required</th><th>Description</th></tr>
+  <tr><th>Variable</th><th>Default / Example</th><th>Required</th><th>Description</th></tr>
+
+  <tr><td colspan="4" style="background:#f0f4ff;font-weight:700;font-size:.8rem;color:#4338ca;padding:6px 14px;">📦 PostgreSQL — shared credentials</td></tr>
   <tr><td><code>POSTGRES_USER</code></td><td>algoverse</td><td>No</td><td>PostgreSQL superuser name</td></tr>
-  <tr><td><code>POSTGRES_PASSWORD</code></td><td>secret</td><td><strong>Yes — change in prod</strong></td><td>PostgreSQL password</td></tr>
-  <tr><td><code>POSTGRES_DB</code></td><td>algoverse</td><td>No</td><td>Default DB (individual DBs created by init.sql)</td></tr>
-  <tr><td><code>REDIS_HOST</code></td><td>localhost</td><td>No</td><td>Redis host (use <code>redis</code> inside Docker)</td></tr>
-  <tr><td><code>REDIS_PORT</code></td><td>6379</td><td>No</td><td>Redis port</td></tr>
-  <tr><td><code>KAFKA_BOOTSTRAP_SERVERS</code></td><td>localhost:29092</td><td>No</td><td>Use <code>kafka:9092</code> inside Docker, <code>localhost:29092</code> outside</td></tr>
-  <tr><td><code>JWT_SECRET</code></td><td>—</td><td><strong>Yes</strong></td><td>HS256 secret for auth tokens (min 32 chars)</td></tr>
-  <tr><td><code>JWT_PUBLIC_KEY</code></td><td>—</td><td>Needed by downstream services</td><td>RS256 public key PEM (used by execution, collab, analytics, sysdesign)</td></tr>
-  <tr><td><code>OLLAMA_BASE_URL</code></td><td>http://localhost:11434</td><td>No</td><td>Ollama REST endpoint. Default works when <code>ollama serve</code> is running locally. Change if Ollama is on another host.</td></tr>
-  <tr><td><code>AI_MODEL</code></td><td>qwen2.5-coder:7b</td><td>No</td><td>Ollama model tag. Pull once with <code>ollama pull qwen2.5-coder:7b</code>. No API key required.</td></tr>
+  <tr><td><code>POSTGRES_PASSWORD</code></td><td>secret</td><td><strong>Yes — change in prod</strong></td><td>PostgreSQL password (shared across all service DBs)</td></tr>
+  <tr><td><code>POSTGRES_DB</code></td><td>algoverse</td><td>No</td><td>Default database (individual DBs created by <code>init.sql</code>)</td></tr>
+
+  <tr><td colspan="4" style="background:#f0f4ff;font-weight:700;font-size:.8rem;color:#4338ca;padding:6px 14px;">📦 Per-service PostgreSQL URLs</td></tr>
   <tr><td><code>AUTH_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/auth_db</td><td>No</td><td>auth-service JDBC URL</td></tr>
   <tr><td><code>PROBLEM_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/problem_db</td><td>No</td><td>problem-service JDBC URL</td></tr>
   <tr><td><code>SUBMISSION_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/submission_db</td><td>No</td><td>submission-service JDBC URL</td></tr>
+  <tr><td><code>EXECUTION_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/execution_db</td><td>No</td><td>execution-service JDBC URL</td></tr>
   <tr><td><code>GAMIFICATION_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/gamification_db</td><td>No</td><td>gamification-service JDBC URL</td></tr>
   <tr><td><code>ANALYTICS_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/analytics_db</td><td>No</td><td>analytics-service JDBC URL</td></tr>
-  <tr><td><code>COLLAB_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/collaboration_db</td><td>No</td><td>collaboration-service JDBC URL</td></tr>
+  <tr><td><code>COLLABORATION_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/collaboration_db</td><td>No</td><td>collaboration-service JDBC URL (also accepted as <code>COLLAB_DB_URL</code>)</td></tr>
   <tr><td><code>NOTIFICATION_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/notification_db</td><td>No</td><td>notification-service JDBC URL</td></tr>
   <tr><td><code>SYSDESIGN_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/sysdesign_db</td><td>No</td><td>sysdesign-service JDBC URL</td></tr>
-  <tr><td><code>EXECUTION_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/execution_db</td><td>No</td><td>execution-service JDBC URL</td></tr>
-  <tr><td><code>AI_DB_URL</code></td><td>postgresql+asyncpg://algoverse:secret@localhost:5432/ai_db</td><td>No</td><td>ai-service asyncpg URL</td></tr>
-  <tr><td><code>MONGODB_URI</code></td><td>mongodb://localhost:27017/problemdb</td><td>No</td><td>MongoDB connection URI</td></tr>
-  <tr><td><code>ELASTICSEARCH_HOST</code></td><td>localhost</td><td>No</td><td>Elasticsearch host</td></tr>
-  <tr><td><code>AI_SERVICE_URL</code></td><td>http://localhost:8090</td><td>No</td><td>Used by sysdesign-service for AI feedback</td></tr>
-  <tr><td><code>PROBLEM_SERVICE_URL</code></td><td>http://localhost:8082</td><td>No</td><td>Used by execution-service to fetch test cases</td></tr>
+  <tr><td><code>AI_DB_URL</code></td><td>postgresql+asyncpg://algoverse:secret@localhost:5432/ai_db</td><td>No</td><td>ai-service asyncpg URL (Python driver)</td></tr>
+
+  <tr><td colspan="4" style="background:#f0f4ff;font-weight:700;font-size:.8rem;color:#4338ca;padding:6px 14px;">📦 MongoDB &amp; Elasticsearch</td></tr>
+  <tr><td><code>MONGODB_URI</code></td><td>mongodb://localhost:27017/problemdb</td><td>No</td><td>MongoDB URI (problem-service + sysdesign-service)</td></tr>
+  <tr><td><code>ELASTICSEARCH_URIS</code></td><td>http://localhost:9200</td><td>No</td><td>Elasticsearch URI used by problem-service (<em>not</em> ELASTICSEARCH_HOST)</td></tr>
+  <tr><td><code>ELASTICSEARCH_USERNAME</code></td><td>elastic</td><td>No</td><td>Elasticsearch username (leave blank if security disabled)</td></tr>
+  <tr><td><code>ELASTICSEARCH_PASSWORD</code></td><td>changeme</td><td>No</td><td>Elasticsearch password (leave blank if security disabled)</td></tr>
+
+  <tr><td colspan="4" style="background:#f0f4ff;font-weight:700;font-size:.8rem;color:#4338ca;padding:6px 14px;">📦 Redis</td></tr>
+  <tr><td><code>REDIS_HOST</code></td><td>localhost</td><td>No</td><td>Redis hostname (use <code>redis</code> inside Docker)</td></tr>
+  <tr><td><code>REDIS_PORT</code></td><td>6379</td><td>No</td><td>Redis port</td></tr>
+  <tr><td><code>REDIS_PASSWORD</code></td><td><em>(empty)</em></td><td>No</td><td>Redis password — leave blank for local dev without auth</td></tr>
+
+  <tr><td colspan="4" style="background:#f0f4ff;font-weight:700;font-size:.8rem;color:#4338ca;padding:6px 14px;">📦 Kafka</td></tr>
+  <tr><td><code>KAFKA_BOOTSTRAP_SERVERS</code></td><td>localhost:29092</td><td>No</td><td>Use <code>kafka:9092</code> inside Docker, <code>localhost:29092</code> outside</td></tr>
+
+  <tr><td colspan="4" style="background:#f0f4ff;font-weight:700;font-size:.8rem;color:#4338ca;padding:6px 14px;">🔑 JWT — RS256 Asymmetric (auth uses private key to sign; all other services use public key to verify)</td></tr>
+  <tr><td><code>JWT_PRIVATE_KEY</code></td><td>-----BEGIN RSA PRIVATE KEY-----\n…</td><td><strong>Yes</strong></td><td>PEM-encoded RSA private key for auth-service to sign tokens. Generate: <code>openssl genrsa -out private.pem 2048</code></td></tr>
+  <tr><td><code>JWT_PUBLIC_KEY</code></td><td>-----BEGIN PUBLIC KEY-----\n…</td><td><strong>Yes</strong></td><td>PEM-encoded RSA public key for all downstream services to verify tokens. Generate: <code>openssl rsa -in private.pem -pubout -out public.pem</code></td></tr>
+
+  <tr><td colspan="4" style="background:#f0f4ff;font-weight:700;font-size:.8rem;color:#4338ca;padding:6px 14px;">🔑 OAuth2 Social Login</td></tr>
+  <tr><td><code>GOOGLE_CLIENT_ID</code></td><td>your-google-client-id</td><td>Social login only</td><td>Google OAuth2 app client ID — <a href="https://console.cloud.google.com">console.cloud.google.com</a></td></tr>
+  <tr><td><code>GOOGLE_CLIENT_SECRET</code></td><td>your-google-client-secret</td><td>Social login only</td><td>Google OAuth2 app client secret</td></tr>
+  <tr><td><code>GITHUB_CLIENT_ID</code></td><td>your-github-client-id</td><td>Social login only</td><td>GitHub OAuth2 app client ID — <a href="https://github.com/settings/developers">github.com/settings/developers</a></td></tr>
+  <tr><td><code>GITHUB_CLIENT_SECRET</code></td><td>your-github-client-secret</td><td>Social login only</td><td>GitHub OAuth2 app client secret</td></tr>
+  <tr><td><code>LINKEDIN_CLIENT_ID</code></td><td>your-linkedin-client-id</td><td>Social login only</td><td>LinkedIn OAuth2 app client ID — <a href="https://www.linkedin.com/developers">linkedin.com/developers</a></td></tr>
+  <tr><td><code>LINKEDIN_CLIENT_SECRET</code></td><td>your-linkedin-client-secret</td><td>Social login only</td><td>LinkedIn OAuth2 app client secret</td></tr>
+
+  <tr><td colspan="4" style="background:#f0f4ff;font-weight:700;font-size:.8rem;color:#4338ca;padding:6px 14px;">🤖 AI Service — Ollama (open-source, no API key required)</td></tr>
+  <tr><td><code>OLLAMA_BASE_URL</code></td><td>http://localhost:11434</td><td>No</td><td>Ollama REST endpoint. Default works when <code>ollama serve</code> is running locally.</td></tr>
+  <tr><td><code>AI_MODEL</code></td><td>qwen2.5-coder:7b</td><td>No</td><td>Ollama model tag. Pull once: <code>ollama pull qwen2.5-coder:7b</code>. No API key required.</td></tr>
+  <tr><td><code>PROBLEM_SERVICE_URL</code></td><td>http://localhost:8082/api/v1</td><td>No</td><td>ai-service uses this to fetch problem metadata for context-aware hints</td></tr>
+
+  <tr><td colspan="4" style="background:#f0f4ff;font-weight:700;font-size:.8rem;color:#4338ca;padding:6px 14px;">🔔 Notification Service</td></tr>
+  <tr><td><code>EMAIL_ENABLED</code></td><td>false</td><td>No</td><td>Enable AWS SES email dispatch. Set to <code>true</code> only when SES credentials are configured.</td></tr>
+  <tr><td><code>PUSH_ENABLED</code></td><td>false</td><td>No</td><td>Enable Firebase Cloud Messaging push notifications. Set to <code>true</code> only when FCM service-account JSON is provided.</td></tr>
 </table>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
@@ -615,8 +643,20 @@ JAVA_HOME=$(/usr/libexec/java_home -v 21) \
   SPRING_DATASOURCE_PASSWORD=secret \
   SPRING_REDIS_HOST=localhost \
   SPRING_KAFKA_BOOTSTRAP_SERVERS=localhost:29092 \
-  JWT_SECRET=change-me-in-production-use-256-bit-key \
+  JWT_PRIVATE_KEY="$(cat /path/to/private.pem)" \
+  JWT_PUBLIC_KEY="$(cat /path/to/public.pem)" \
   mvn spring-boot:run</code></pre>
+
+  <div class="card info" style="margin-bottom:12px">
+    <div class="card-title">ℹ️ Generating RS256 keys (one-time setup)</div>
+    <pre style="margin:4px 0 0"><code><span class="comment"># Generate 2048-bit RSA keypair</span>
+openssl genrsa -out private.pem 2048
+openssl rsa -in private.pem -pubout -out public.pem
+
+<span class="comment"># Set in .env (replace literal newlines with \n or use export with quotes)</span>
+export JWT_PRIVATE_KEY="$(cat private.pem)"
+export JWT_PUBLIC_KEY="$(cat public.pem)"</code></pre>
+  </div>
 
   <h4>B) Build &amp; run with Docker</h4>
 <pre><code>cd services/auth-service
@@ -630,7 +670,8 @@ docker run -d \
   -e SPRING_DATASOURCE_PASSWORD=secret \
   -e SPRING_REDIS_HOST=algoverse-redis \
   -e SPRING_KAFKA_BOOTSTRAP_SERVERS=algoverse-kafka:9092 \
-  -e JWT_SECRET=change-me-in-production-use-256-bit-key \
+  -e JWT_PRIVATE_KEY="$(cat /path/to/private.pem)" \
+  -e JWT_PUBLIC_KEY="$(cat /path/to/public.pem)" \
   algoverse/auth-service:local</code></pre>
 
   <h4>Health &amp; smoke test</h4>
@@ -1089,7 +1130,8 @@ VITE_API_BASE_URL=http://localhost:8081</code></pre>
   <div class="step-body">
     <strong>Copy and configure environment</strong>
     <pre><code>cp .env.example .env
-<span class="comment"># Edit .env — at minimum set JWT_SECRET</span>
+<span class="comment"># Edit .env — at minimum set JWT_PRIVATE_KEY and JWT_PUBLIC_KEY (RS256 keypair)</span>
+<span class="comment"># Generate: openssl genrsa -out private.pem 2048 &amp;&amp; openssl rsa -in private.pem -pubout -out public.pem</span>
 <span class="comment"># No API keys needed — AI runs via local Ollama (see Section 7.9)</span></code></pre>
   </div>
 </div>
@@ -1386,15 +1428,23 @@ kill -9 &lt;PID&gt;</code></pre>
     <td><strong>Demo video</strong></td>
     <td>Playwright capture spec (<code>testing/e2e/tests/capture/capture_frames.spec.ts</code>) — 10 pages at 1280×800. ffmpeg → <code>algoverse-demo.mp4</code> (35s H.264, 25fps, no backend needed).</td>
   </tr>
+  <tr>
+    <td><strong>Three.js algorithm visualizations — <code>/visualize</code> page</strong></td>
+    <td>Full 3D interactive visualizer at <code>/visualize</code>. Three tabs: <strong>Sorting</strong> (Bubble / Insertion / Selection / Quick / Merge sort — 10–50 elements, animated bars, 5 algorithm step generators), <strong>BST</strong> (insert + search with animated node pop-in and path traversal), <strong>Graph</strong> (BFS / DFS on a 9-node 3D graph with live queue/stack display). Built with <code>@react-three/fiber</code> + <code>@react-three/drei</code>. Lazy-loaded with Vite <code>three-vendor</code> manual chunk. Route: <code>RequireAuth → /visualize</code>.</td>
+  </tr>
+  <tr>
+    <td><strong>.env.example corrected — full coverage across all 11 services</strong></td>
+    <td>Removed stale <code>ANTHROPIC_API_KEY</code> (AI migrated to Ollama). Replaced <code>JWT_SECRET</code> (HS256) with <code>JWT_PRIVATE_KEY</code> + <code>JWT_PUBLIC_KEY</code> (RS256 asymmetric — what auth-service actually uses). Fixed <code>ELASTICSEARCH_HOST</code> → <code>ELASTICSEARCH_URIS</code> (exact key read by problem-service). Added: <code>ELASTICSEARCH_USERNAME</code>, <code>ELASTICSEARCH_PASSWORD</code>, <code>REDIS_PASSWORD</code>, <code>EXECUTION_DB_URL</code>, <code>COLLABORATION_DB_URL</code>, <code>ANALYTICS_DB_URL</code>, <code>NOTIFICATION_DB_URL</code>, <code>SYSDESIGN_DB_URL</code>, OAuth2 client IDs/secrets for Google + GitHub + LinkedIn, <code>OLLAMA_BASE_URL</code>, <code>AI_MODEL</code>, <code>PROBLEM_SERVICE_URL</code>, <code>EMAIL_ENABLED</code>, <code>PUSH_ENABLED</code>.</td>
+  </tr>
+  <tr>
+    <td><strong>CI fix — TypeScript strict errors + <code>@algoverse/ast-parser</code> workspace</strong></td>
+    <td>Registered <code>tools/*</code> as npm workspace so <code>@algoverse/ast-parser</code> symlinks into <code>node_modules</code> (was causing <em>Cannot find module</em> in CI). Installed missing peer dep <code>@testing-library/dom</code> (needed by <code>@testing-library/react</code> re-exports for <code>screen</code>/<code>waitFor</code>). Fixed tsconfig <code>paths</code> to use workspace-root-relative paths. Resolved all <code>noUnusedLocals</code> / <code>noUnusedParameters</code> / <code>noImplicitReturns</code> errors across 10 source files. <code>tsc --noEmit</code> now passes with zero errors.</td>
+  </tr>
 </table>
 
 <h3>🔵 Planned — Next Up</h3>
 <table>
   <tr><th>Feature</th><th>Details</th></tr>
-  <tr>
-    <td>Three.js algorithm visualizations</td>
-    <td>3D animated sorting (quicksort, mergesort), tree traversal, graph BFS/DFS via React Three Fiber. Consumes step data from visualization-service trace API.</td>
-  </tr>
   <tr>
     <td>Admin panel</td>
     <td>Problem authoring (Markdown editor + test case manager), platform analytics dashboard, user management. New <code>/admin</code> route guarded by <code>ROLE=ADMIN</code>.</td>
@@ -1418,7 +1468,7 @@ kill -9 &lt;PID&gt;</code></pre>
 </table>
 
 <div class="footer">
-  AlgoVerse &mdash; Local Development Guide &mdash; v2.0 &mdash; 2026-05-26<br/>
+  AlgoVerse &mdash; Local Development Guide &mdash; v2.1 &mdash; 2026-05-26<br/>
   Questions? Open an issue or reach out at <a href="mailto:piyushkmrmandal@gmail.com">piyushkmrmandal@gmail.com</a>
 </div>
 
