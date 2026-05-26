@@ -14,6 +14,7 @@ import com.algoverse.problem.domain.repository.ProblemRepository;
 import com.algoverse.problem.domain.repository.ProblemTopicRepository;
 import com.algoverse.problem.domain.repository.TestCaseRepository;
 import com.algoverse.problem.domain.repository.TopicRepository;
+import com.algoverse.problem.infrastructure.elasticsearch.ProblemSearchRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -71,6 +72,9 @@ class ProblemServiceTest {
 
     // ── CreateProblem ────────────────────────────────────────────────────────
 
+    @Mock
+    private ProblemSearchRepository problemSearchRepository;
+
     private CreateProblemUseCase createProblemUseCase;
 
     // ── Shared fixtures ──────────────────────────────────────────────────────
@@ -100,7 +104,8 @@ class ProblemServiceTest {
         getProblemUseCase = new GetProblemUseCase(
                 problemRepository, testCaseRepository, problemTopicRepository, topicRepository);
         createProblemUseCase = new CreateProblemUseCase(
-                problemRepository, testCaseRepository, problemTopicRepository, topicRepository);
+                problemRepository, testCaseRepository, problemTopicRepository, topicRepository,
+                problemSearchRepository);
     }
 
     // ========================================================================
