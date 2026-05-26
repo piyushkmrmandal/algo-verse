@@ -4,10 +4,13 @@ import { motion, AnimatePresence, useMotionValue, useTransform, animate } from '
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface XpCounterProps {
-  totalXp: number
+  totalXp?: number
+  /** alias for totalXp */
+  xp?: number
   level: number
-  weeklyXp: number
-  weeklyHistory?: number[] // 7 values, index 0 = 6 days ago, 6 = today
+  weeklyXp?: number
+  xpToNext?: number
+  weeklyHistory?: number[]
 }
 
 // ── Level thresholds ───────────────────────────────────────────────────────────
@@ -190,33 +193,35 @@ const WeeklyChart: React.FC<{ data: number[] }> = ({ data }) => {
 
 const XpCounter: React.FC<XpCounterProps> = ({
   totalXp,
+  xp,
   level,
-  weeklyXp,
+  weeklyXp = 0,
   weeklyHistory = [0, 0, 0, 0, 0, 0, 0],
 }) => {
-  const displayedXp = useCountUp(totalXp)
+  const resolvedXp = totalXp ?? xp ?? 0
+  const displayedXp = useCountUp(resolvedXp)
   const displayedLevel = useCountUp(level, 0.4)
   const tier = getLevelTier(level)
 
   const xpForThisLevel = xpForLevel(level)
   const xpNeeded = xpForNextLevel(level)
-  const xpIntoLevel = totalXp - xpForThisLevel
+  const xpIntoLevel = resolvedXp - xpForThisLevel
   const xpRange = xpNeeded - xpForThisLevel
   const progress = xpRange > 0 ? Math.min(1, xpIntoLevel / xpRange) : 1
 
-  const xpToNext = xpNeeded - totalXp
-  const prevXp = useRef(totalXp)
+  const xpToNextLevel = xpNeeded - resolvedXp
+  const prevXp = useRef(resolvedXp)
   const [toastGain, setToastGain] = useState<number | null>(null)
 
   useEffect(() => {
-    const diff = totalXp - prevXp.current
+    const diff = resolvedXp - prevXp.current
     if (diff > 0) {
       setToastGain(diff)
       const t = setTimeout(() => setToastGain(null), 1500)
-      prevXp.current = totalXp
+      prevXp.current = resolvedXp
       return () => clearTimeout(t)
     }
-    prevXp.current = totalXp
+    prevXp.current = resolvedXp
   }, [totalXp])
 
   return (
@@ -227,7 +232,7 @@ const XpCounter: React.FC<XpCounterProps> = ({
       </AnimatePresence>
 
       {/* Ring + level badge */}
-      <div className="relative flex items-center justify-center" title={`${xpToNext} XP to next level`}>
+      <div className="relative flex items-center justify-center" title={`${xpToNextLevel} XP to next level`}>
         <CircularRing
           progress={progress}
           size={96}
@@ -270,9 +275,9 @@ const XpCounter: React.FC<XpCounterProps> = ({
           <span className="text-sm font-normal text-[#475569] ml-1">XP</span>
         </div>
         <div className="text-xs text-[#475569] mt-0.5">
-          {xpToNext > 0 ? (
+          {xpToNextLevel > 0 ? (
             <>
-              <span className="text-[#94A3B8]">{xpToNext.toLocaleString()}</span> to Level{' '}
+              <span className="text-[#94A3B8]">{xpToNextLevel.toLocaleString()}</span> to Level{' '}
               {level + 1}
             </>
           ) : (
@@ -297,4 +302,5 @@ const XpCounter: React.FC<XpCounterProps> = ({
   )
 }
 
+export { XpCounter }
 export default XpCounter

@@ -6,8 +6,11 @@ import { motion } from 'framer-motion'
 interface StreakTrackerProps {
   currentStreak: number
   longestStreak: number
-  lastActivityDate: string // ISO date string e.g. "2026-05-22"
-  freezeCount: number
+  lastSolvedDate?: string | null
+  /** @deprecated use lastSolvedDate */
+  lastActivityDate?: string | null
+  freezeCount?: number
+  weeklyActivity?: boolean[]
 }
 
 // ── Milestone badges ─────────────────────────────────────────────────────────
@@ -117,21 +120,24 @@ const DayDot: React.FC<{ status: DayStatus; label: string }> = ({
 const StreakTracker: React.FC<StreakTrackerProps> = ({
   currentStreak,
   longestStreak,
+  lastSolvedDate,
   lastActivityDate,
-  freezeCount,
+  freezeCount = 0,
 }) => {
+  const effectiveLastDate = lastSolvedDate ?? lastActivityDate ?? null
   const todayStr = today()
   const yesterdayStr = yesterday()
 
   const isAtRisk =
-    lastActivityDate === yesterdayStr &&
-    lastActivityDate !== todayStr
+    effectiveLastDate === yesterdayStr &&
+    effectiveLastDate !== todayStr
 
   const days7 = last7Days()
 
-  // Mock: assume active on days within current streak counting back from lastActivityDate
+  // Assume active on days within current streak counting back from effectiveLastDate
   const activeDays = useMemo(() => {
-    const last = parseDate(lastActivityDate)
+    if (!effectiveLastDate) return new Set<string>()
+    const last = parseDate(effectiveLastDate)
     const active = new Set<string>()
     for (let i = 0; i < Math.min(currentStreak, 7); i++) {
       const d = new Date(last)
@@ -139,7 +145,7 @@ const StreakTracker: React.FC<StreakTrackerProps> = ({
       active.add(toISODate(d))
     }
     return active
-  }, [lastActivityDate, currentStreak])
+  }, [effectiveLastDate, currentStreak])
 
   const getDayStatus = (dateStr: string): DayStatus => {
     if (dateStr > todayStr) return 'future'
@@ -282,4 +288,5 @@ const StreakTracker: React.FC<StreakTrackerProps> = ({
   )
 }
 
+export { StreakTracker }
 export default StreakTracker
