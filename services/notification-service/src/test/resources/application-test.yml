@@ -1,0 +1,50 @@
+spring:
+  datasource:
+    url: ${TEST_DATASOURCE_URL:}
+    username: ${TEST_DATASOURCE_USERNAME:test}
+    password: ${TEST_DATASOURCE_PASSWORD:test}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 3
+      minimum-idle: 1
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  # Disable Redis for tests (use no-op cache)
+  cache:
+    type: none
+  data:
+    redis:
+      host: localhost
+      port: 6370   # non-existent — cache disabled
+
+  # Point Kafka to a non-existent broker so the consumer never starts
+  kafka:
+    bootstrap-servers: localhost:9999
+    consumer:
+      group-id: notification-service-test
+      auto-offset-reset: earliest
+
+notification:
+  email:
+    from: noreply@algoverse.io
+    enabled: false
+  push:
+    enabled: false
+  idempotency-ttl-hours: 24
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

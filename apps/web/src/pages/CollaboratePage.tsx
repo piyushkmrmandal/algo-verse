@@ -92,11 +92,13 @@ export default function CollaboratePage() {
           transition={{ delay: 0.05 }}
           className="glass rounded-2xl overflow-hidden"
         >
-          <div className="flex border-b border-border-subtle">
+          <div className="flex border-b border-border-subtle" data-testid="room-tabs">
             {(['create', 'join'] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
+                data-testid={`tab-${t}`}
+                aria-selected={tab === t}
                 className={`flex-1 py-3.5 text-sm font-semibold transition-all duration-200 capitalize ${
                   tab === t
                     ? 'text-brand-primary bg-brand-primary/5 border-b-2 border-brand-primary'
@@ -123,11 +125,13 @@ export default function CollaboratePage() {
                     <label className="block text-sm font-medium text-text-secondary mb-3">
                       Language
                     </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2" data-testid="language-selector">
                       {LANGUAGE_OPTIONS.map((lang) => (
                         <button
                           key={lang.value}
                           onClick={() => setLanguage(lang.value)}
+                          data-testid={`language-option-${lang.value}`}
+                          aria-pressed={language === lang.value}
                           className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all duration-150 ${
                             language === lang.value
                               ? 'border-brand-primary bg-brand-primary/10 text-brand-primary'
@@ -145,6 +149,7 @@ export default function CollaboratePage() {
                     whileTap={{ scale: 0.98 }}
                     onClick={() => createRoom.mutate()}
                     disabled={createRoom.isPending}
+                    data-testid="create-room-btn"
                     className="btn-primary w-full py-3 text-base"
                   >
                     {createRoom.isPending ? (
@@ -180,7 +185,7 @@ export default function CollaboratePage() {
                     <p className="text-xs text-text-muted mb-3">
                       Ask your partner to share their room code (format: ABC-DEF-GHI)
                     </p>
-                    <form onSubmit={handleJoin} className="flex gap-3">
+                    <form onSubmit={handleJoin} className="flex gap-3" data-testid="join-room-form">
                       <input
                         className="input-base flex-1 text-center tracking-[0.3em] uppercase text-lg font-mono"
                         placeholder="ABC-DEF-GHI"
@@ -191,11 +196,13 @@ export default function CollaboratePage() {
                         }}
                         maxLength={11}
                         autoFocus
+                        data-testid="join-code-input"
                       />
                       <motion.button
                         type="submit"
                         whileTap={{ scale: 0.97 }}
                         disabled={joinRoom.isPending || !joinCode.trim()}
+                        data-testid="join-room-btn"
                         className="btn-primary px-6 shrink-0"
                       >
                         {joinRoom.isPending ? '…' : 'Join'}
@@ -206,6 +213,8 @@ export default function CollaboratePage() {
                         initial={{ opacity: 0, y: -4 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="mt-2 text-sm text-error"
+                        data-testid="join-error-msg"
+                        role="alert"
                       >
                         {joinError}
                       </motion.p>

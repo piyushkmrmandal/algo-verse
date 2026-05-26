@@ -37,6 +37,10 @@ AlgoVerse is built for software engineers who want to go beyond grinding problem
 | **GitHub Actions CI/CD (per-service build+test, GHCR push)** | ✅ Done |
 | **Notification service (in-app + SES email + FCM push)** | ✅ Done |
 | **AST-based execution tracing (Python sys.settrace + Node vm)** | ✅ Done |
+| **Unit tests — notification-service (dispatch routing, idempotency, REST slice)** | ✅ Done |
+| **Testcontainers integration tests — notification-service + visualization-service** | ✅ Done |
+| **data-testid attributes — SysdesignListPage, CollaboratePage, SysdesignProblemPage** | ✅ Done |
+| **Shared type consolidation — SupportedLanguage + toApiLanguage() in shared-types** | ✅ Done |
 | Dark/light theme with CSS variable design tokens | ✅ Done |
 | Three.js algorithm visualizations | Planned |
 | Three.js algorithm visualizations | Planned |
@@ -190,6 +194,8 @@ make clean             # remove containers + volumes (destructive)
 JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn test -pl services/analytics-service
 JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn test -pl services/submission-service
 JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn test -pl services/sysdesign-service
+# notification-service — dispatch routing, idempotency, REST controller slice
+JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn test -pl services/notification-service
 ```
 
 ### Integration Tests (Testcontainers — Docker required)
@@ -198,6 +204,10 @@ JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn test -pl services/sysdesign-servic
 JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/analytics-service  -P integration
 JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/submission-service -P integration
 JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/sysdesign-service  -P integration
+# notification-service — PostgreSQL via Testcontainers, Kafka disabled
+JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/notification-service -P integration
+# visualization-service — Redis via Testcontainers (redis:7-alpine)
+JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/visualization-service -P integration
 ```
 
 ### Load Tests (k6)

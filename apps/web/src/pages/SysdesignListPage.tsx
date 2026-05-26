@@ -65,11 +65,13 @@ export default function SysdesignListPage() {
           className="flex flex-wrap gap-4 mb-8"
         >
           {/* Category pills */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" data-testid="category-filter">
             {CATEGORIES.map((c) => (
               <button
                 key={c}
                 onClick={() => setCategory(c)}
+                data-testid={`category-pill-${c.toLowerCase()}`}
+                aria-pressed={category === c}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-150 ${
                   category === c
                     ? 'bg-brand-primary text-white border-brand-primary'
@@ -82,11 +84,13 @@ export default function SysdesignListPage() {
           </div>
 
           {/* Difficulty */}
-          <div className="flex gap-1 bg-bg-elevated rounded-lg p-1 border border-border-subtle ml-auto">
+          <div className="flex gap-1 bg-bg-elevated rounded-lg p-1 border border-border-subtle ml-auto" data-testid="difficulty-filter">
             {DIFFICULTIES.map((d) => (
               <button
                 key={d}
                 onClick={() => setDifficulty(d)}
+                data-testid={`difficulty-btn-${d.toLowerCase()}`}
+                aria-pressed={difficulty === d}
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150 ${
                   difficulty === d
                     ? 'bg-brand-primary text-white'
@@ -101,7 +105,7 @@ export default function SysdesignListPage() {
 
         {/* Problem grid */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="problems-grid-loading">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="h-44 bg-bg-elevated rounded-2xl animate-pulse" />
             ))}
@@ -117,7 +121,7 @@ export default function SysdesignListPage() {
             <p className="text-text-muted text-sm">Try changing the filters above</p>
           </motion.div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="problems-grid">
             {problems.map((problem, i) => (
               <motion.div
                 key={problem.id}
@@ -127,6 +131,7 @@ export default function SysdesignListPage() {
               >
                 <Link
                   to={`/sysdesign/${problem.slug}`}
+                  data-testid={`problem-card-${problem.slug}`}
                   className="group block h-full glass rounded-2xl p-5 hover:border-brand-primary/40 transition-all duration-200 hover:-translate-y-0.5"
                 >
                   <div className="flex items-start justify-between mb-3">

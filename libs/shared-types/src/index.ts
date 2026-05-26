@@ -4,6 +4,26 @@ export * from './kafka/events';
 // Domain enums shared across frontend and services
 export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
 export type Language = 'PYTHON' | 'JAVA' | 'CPP' | 'JAVASCRIPT' | 'GO' | 'RUST';
+
+/**
+ * Monaco-compatible lowercase language identifiers used in the editor UI.
+ * Use `toApiLanguage()` to convert to the uppercase `Language` enum for API calls.
+ */
+export type SupportedLanguage = 'python' | 'java' | 'cpp' | 'javascript' | 'go' | 'rust';
+
+const _LANGUAGE_MAP: Record<SupportedLanguage, Language> = {
+  python: 'PYTHON',
+  java: 'JAVA',
+  cpp: 'CPP',
+  javascript: 'JAVASCRIPT',
+  go: 'GO',
+  rust: 'RUST',
+};
+
+/** Convert a Monaco-lowercase language to the backend API uppercase enum. */
+export function toApiLanguage(lang: SupportedLanguage): Language {
+  return _LANGUAGE_MAP[lang];
+}
 export type SubmissionStatus =
   | 'PENDING'
   | 'RUNNING'

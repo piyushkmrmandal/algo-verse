@@ -124,6 +124,7 @@ function DiagramCanvas({
   return (
     <svg
       ref={svgRef}
+      data-testid="diagram-canvas"
       className="w-full h-full"
       style={{ background: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0)', backgroundSize: '24px 24px' }}
       onMouseMove={handleMouseMove}
@@ -405,6 +406,7 @@ export default function SysdesignProblemPage() {
             whileTap={{ scale: 0.97 }}
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending || nodes.length === 0}
+            data-testid="save-diagram-btn"
             className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#18181C] border border-[#27272A] text-[#94A3B8] hover:border-[#6366F1]/50 hover:text-[#6366F1] transition-all disabled:opacity-40"
           >
             {saveMutation.isPending ? 'Saving…' : savedDiagramId ? '✓ Saved' : 'Save'}
@@ -413,6 +415,7 @@ export default function SysdesignProblemPage() {
             whileTap={{ scale: 0.97 }}
             onClick={requestFeedback}
             disabled={nodes.length === 0}
+            data-testid="get-feedback-btn"
             className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#6366F1]/10 border border-[#6366F1]/30 text-[#6366F1] hover:bg-[#6366F1]/20 transition-all disabled:opacity-40"
           >
             🤖 Get AI Feedback
@@ -424,11 +427,13 @@ export default function SysdesignProblemPage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Left: problem description */}
         <div className="w-[340px] shrink-0 flex flex-col bg-[#111113] border-r border-[#18181C]">
-          <div className="flex border-b border-[#18181C]">
+          <div className="flex border-b border-[#18181C]" data-testid="left-tabs">
             {(['problem', 'requirements'] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setLeftTab(t)}
+                data-testid={`left-tab-${t}`}
+                aria-selected={leftTab === t}
                 className={`flex-1 px-4 py-2.5 text-xs font-medium capitalize transition-colors border-b-2 -mb-px ${
                   leftTab === t
                     ? 'text-[#6366F1] border-[#6366F1]'
@@ -481,6 +486,8 @@ export default function SysdesignProblemPage() {
           <div className="flex items-center border-b border-[#18181C] bg-[#111113] shrink-0 px-2 gap-2">
             <button
               onClick={() => setRightTab('canvas')}
+              data-testid="right-tab-canvas"
+              aria-selected={rightTab === 'canvas'}
               className={`px-3 py-2.5 text-xs font-medium border-b-2 -mb-px transition-colors ${
                 rightTab === 'canvas' ? 'text-[#6366F1] border-[#6366F1]' : 'text-[#475569] border-transparent hover:text-[#94A3B8]'
               }`}
@@ -489,6 +496,8 @@ export default function SysdesignProblemPage() {
             </button>
             <button
               onClick={() => setRightTab('feedback')}
+              data-testid="right-tab-feedback"
+              aria-selected={rightTab === 'feedback'}
               className={`px-3 py-2.5 text-xs font-medium border-b-2 -mb-px transition-colors ${
                 rightTab === 'feedback' ? 'text-[#6366F1] border-[#6366F1]' : 'text-[#475569] border-transparent hover:text-[#94A3B8]'
               }`}
@@ -499,12 +508,13 @@ export default function SysdesignProblemPage() {
             {rightTab === 'canvas' && (
               <>
                 <div className="w-px h-5 bg-[#27272A] mx-1" />
-                <div className="flex items-center gap-1 overflow-x-auto">
+                <div className="flex items-center gap-1 overflow-x-auto" data-testid="node-palette">
                   {NODE_TYPES.map((nt) => (
                     <button
                       key={nt.type}
                       onClick={() => addNode(nt.type)}
                       title={`Add ${nt.label}`}
+                      data-testid={`node-type-${nt.type}`}
                       className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-[#94A3B8] hover:text-[#F8F8F2] hover:bg-[#18181C] transition-colors whitespace-nowrap shrink-0"
                     >
                       <span>{nt.icon}</span>
@@ -572,6 +582,7 @@ export default function SysdesignProblemPage() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   className="absolute inset-0 bg-[#111113]"
+                  data-testid="feedback-panel"
                 >
                   <FeedbackPanel feedback={feedback ?? null} isLoading={feedbackLoading} />
                 </motion.div>

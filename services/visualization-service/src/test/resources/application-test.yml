@@ -1,0 +1,24 @@
+spring:
+  # Disable Redis cache — container URI injected via @DynamicPropertySource
+  data:
+    redis:
+      host: ${TEST_REDIS_HOST:localhost}
+      port: ${TEST_REDIS_PORT:6379}
+      timeout: 2000ms
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 60000
+
+visualization:
+  timeout-seconds: 10
+  max-steps: 200
+  python-executable: python3
+  node-executable: node
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

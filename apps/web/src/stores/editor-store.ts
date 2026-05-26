@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { devtools, persist } from 'zustand/middleware'
+import type { SupportedLanguage } from '@algoverse/shared-types'
 
-export type SupportedLanguage = 'python' | 'java' | 'cpp' | 'javascript' | 'go' | 'rust'
+export type { SupportedLanguage }
 
 export type SubmissionStatus =
   | 'IDLE'
