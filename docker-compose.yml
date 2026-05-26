@@ -238,13 +238,14 @@ services:
       - "8081:8081"
     environment:
       <<: *common-env
-      SPRING_DATASOURCE_URL: ${AUTH_DB_URL:-jdbc:postgresql://postgres:5432/auth_db}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/auth_db
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-algoverse}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-secret}
-      SPRING_REDIS_HOST: ${REDIS_HOST:-redis}
-      SPRING_REDIS_PORT: ${REDIS_PORT:-6379}
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-use-256-bit-key}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:-}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
       SERVER_PORT: 8081
     networks:
       - algoverse-net
@@ -266,11 +267,12 @@ services:
       - "8082:8082"
     environment:
       <<: *common-env
-      SPRING_DATASOURCE_URL: ${PROBLEM_DB_URL:-jdbc:postgresql://postgres:5432/problem_db}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/problem_db
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-algoverse}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-secret}
-      SPRING_ELASTICSEARCH_URIS: http://${ELASTICSEARCH_HOST:-elasticsearch}:9200
-      SPRING_DATA_MONGODB_URI: ${MONGODB_URI:-mongodb://mongodb:27017/problemdb}
+      SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/problemdb
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
       SERVER_PORT: 8082
     networks:
       - algoverse-net
@@ -292,12 +294,13 @@ services:
       - "8083:8083"
     environment:
       <<: *common-env
-      SPRING_DATASOURCE_URL: ${SUBMISSION_DB_URL:-jdbc:postgresql://postgres:5432/submission_db}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/submission_db
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-algoverse}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-secret}
-      SPRING_REDIS_HOST: ${REDIS_HOST:-redis}
-      SPRING_REDIS_PORT: ${REDIS_PORT:-6379}
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
       SERVER_PORT: 8083
     networks:
       - algoverse-net
@@ -319,12 +322,13 @@ services:
       - "8084:8084"
     environment:
       <<: *common-env
-      SPRING_DATASOURCE_URL: ${GAMIFICATION_DB_URL:-jdbc:postgresql://postgres:5432/gamification_db}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/gamification_db
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-algoverse}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-secret}
-      SPRING_REDIS_HOST: ${REDIS_HOST:-redis}
-      SPRING_REDIS_PORT: ${REDIS_PORT:-6379}
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
       SERVER_PORT: 8084
     networks:
       - algoverse-net
@@ -342,16 +346,19 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mongodb:
+        condition: service_healthy
     ports:
       - "8085:8085"
     environment:
       <<: *common-env
-      ANALYTICS_DB_URL: ${ANALYTICS_DB_URL:-jdbc:postgresql://postgres:5432/analytics_db}
+      ANALYTICS_DB_URL: jdbc:postgresql://postgres:5432/analytics_db
       DB_USERNAME: ${POSTGRES_USER:-algoverse}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-secret}
-      REDIS_HOST: ${REDIS_HOST:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      MONGODB_URI: mongodb://mongodb:27017/analyticsdb
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
       SERVER_PORT: 8085
     networks:
@@ -374,11 +381,14 @@ services:
       - "8090:8090"
     environment:
       <<: *common-env
-      AI_DB_URL: ${AI_DB_URL:-postgresql+asyncpg://algoverse:secret@postgres:5432/ai_db}
-      REDIS_HOST: ${REDIS_HOST:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_DB_URL: postgresql+asyncpg://${POSTGRES_USER:-algoverse}:${POSTGRES_PASSWORD:-secret}@postgres:5432/ai_db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      AI_MODEL: ${AI_MODEL:-qwen2.5-coder:7b}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+      PROBLEM_SERVICE_URL: http://problem-service:8082/api/v1
     networks:
       - algoverse-net
 
@@ -399,13 +409,13 @@ services:
       - "8086:8086"
     environment:
       <<: *common-env
-      SYSDESIGN_DB_URL: ${SYSDESIGN_DB_URL:-jdbc:postgresql://postgres:5432/sysdesign_db}
+      SYSDESIGN_DB_URL: jdbc:postgresql://postgres:5432/sysdesign_db
       DB_USERNAME: ${POSTGRES_USER:-algoverse}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-secret}
-      MONGODB_URI: ${MONGODB_URI:-mongodb://mongodb:27017/sysdesigndb}
-      REDIS_HOST: ${REDIS_HOST:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai-service:8090}
+      MONGODB_URI: mongodb://mongodb:27017/sysdesigndb
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      AI_SERVICE_URL: http://ai-service:8090
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
       SERVER_PORT: 8086
     networks:
@@ -428,12 +438,12 @@ services:
       - "8087:8087"
     environment:
       <<: *common-env
-      EXECUTION_DB_URL: ${EXECUTION_DB_URL:-jdbc:postgresql://postgres:5432/execution_db}
+      EXECUTION_DB_URL: jdbc:postgresql://postgres:5432/execution_db
       EXECUTION_DB_USER: ${POSTGRES_USER:-algoverse}
       EXECUTION_DB_PASSWORD: ${POSTGRES_PASSWORD:-secret}
-      REDIS_HOST: ${REDIS_HOST:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
       PROBLEM_SERVICE_URL: http://problem-service:8082
       SERVER_PORT: 8087
@@ -457,12 +467,12 @@ services:
       - "8088:8088"
     environment:
       <<: *common-env
-      COLLAB_DB_URL: ${COLLAB_DB_URL:-jdbc:postgresql://postgres:5432/collaboration_db}
+      COLLAB_DB_URL: jdbc:postgresql://postgres:5432/collaboration_db
       DB_USERNAME: ${POSTGRES_USER:-algoverse}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-secret}
-      REDIS_HOST: ${REDIS_HOST:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
       SERVER_PORT: 8088
     networks:
@@ -485,12 +495,13 @@ services:
       - "8091:8091"
     environment:
       <<: *common-env
-      SPRING_DATASOURCE_URL: ${NOTIFICATION_DB_URL:-jdbc:postgresql://postgres:5432/notification_db}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/notification_db
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-algoverse}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-secret}
-      SPRING_REDIS_HOST: ${REDIS_HOST:-redis}
-      SPRING_REDIS_PORT: ${REDIS_PORT:-6379}
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
       SERVER_PORT: 8091
     networks:
       - algoverse-net
@@ -508,8 +519,8 @@ services:
       - "8092:8092"
     environment:
       <<: *common-env
-      SPRING_REDIS_HOST: ${REDIS_HOST:-redis}
-      SPRING_REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       TRACE_TIMEOUT_SECONDS: 10
       TRACE_MAX_STEPS: 500
       SERVER_PORT: 8092

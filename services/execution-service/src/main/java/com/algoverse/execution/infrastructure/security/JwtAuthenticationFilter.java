@@ -128,7 +128,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String clean = pem
                     .replace("-----BEGIN PUBLIC KEY-----", "")
                     .replace("-----END PUBLIC KEY-----", "")
-                    .replaceAll("\\s+", "");
+                    .replace("\\n", "").replaceAll("\\s+", "");
             byte[] decoded = Base64.getDecoder().decode(clean);
             KeyFactory kf = KeyFactory.getInstance("RSA");
             return kf.generatePublic(new X509EncodedKeySpec(decoded));

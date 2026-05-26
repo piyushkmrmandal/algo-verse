@@ -133,7 +133,7 @@ public class SecurityConfig {
                 String cleaned = rawPublicKey
                         .replace("-----BEGIN PUBLIC KEY-----", "")
                         .replace("-----END PUBLIC KEY-----", "")
-                        .replaceAll("\\s+", "");
+                        .replace("\\n", "").replaceAll("\\s+", "");
 
                 byte[] keyBytes = Base64.getDecoder().decode(cleaned);
                 KeyFactory kf = KeyFactory.getInstance("RSA");

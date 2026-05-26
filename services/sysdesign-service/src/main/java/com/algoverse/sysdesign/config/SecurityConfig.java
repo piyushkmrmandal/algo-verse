@@ -110,7 +110,7 @@ public class SecurityConfig {
             String pem = publicKeyPem
                 .replace("-----BEGIN PUBLIC KEY-----", "")
                 .replace("-----END PUBLIC KEY-----", "")
-                .replaceAll("\\s", "");
+                .replace("\\n", "").replaceAll("\\s", "");
             byte[] keyBytes = Base64.getDecoder().decode(pem);
             RSAPublicKey publicKey = (RSAPublicKey) KeyFactory.getInstance("RSA")
                 .generatePublic(new X509EncodedKeySpec(keyBytes));

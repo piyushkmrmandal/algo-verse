@@ -168,7 +168,7 @@ public class JwtService {
                 .replace("-----END PRIVATE KEY-----", "")
                 .replace("-----BEGIN RSA PRIVATE KEY-----", "")
                 .replace("-----END RSA PRIVATE KEY-----", "")
-                .replaceAll("\\s+", "");
+                .replace("\\n", "").replaceAll("\\s+", "");
         byte[] decoded = Base64.getDecoder().decode(stripped);
         PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(decoded);
         return KeyFactory.getInstance("RSA").generatePrivate(spec);
@@ -178,7 +178,7 @@ public class JwtService {
         String stripped = pem
                 .replace("-----BEGIN PUBLIC KEY-----", "")
                 .replace("-----END PUBLIC KEY-----", "")
-                .replaceAll("\\s+", "");
+                .replace("\\n", "").replaceAll("\\s+", "");
         byte[] decoded = Base64.getDecoder().decode(stripped);
         X509EncodedKeySpec spec = new X509EncodedKeySpec(decoded);
         return KeyFactory.getInstance("RSA").generatePublic(spec);

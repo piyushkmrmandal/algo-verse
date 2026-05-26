@@ -32,7 +32,7 @@ public class JwtService {
             String stripped = publicKeyPem
                     .replace("-----BEGIN PUBLIC KEY-----", "")
                     .replace("-----END PUBLIC KEY-----", "")
-                    .replaceAll("\\s+", "");
+                    .replace("\\n", "").replaceAll("\\s+", "");
             byte[] decoded = Base64.getDecoder().decode(stripped);
             RSAPublicKey key = (RSAPublicKey) KeyFactory.getInstance("RSA")
                     .generatePublic(new X509EncodedKeySpec(decoded));
