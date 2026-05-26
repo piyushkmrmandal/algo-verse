@@ -234,11 +234,7 @@ class DiagramServiceTest {
 
         given(valueOps.get("feedback:" + DIAG_ID)).willReturn(cachedFeedback);
 
-        UserDiagram diagram = UserDiagram.builder()
-            .id(DIAG_ID).userId(USER_ID).problemId(PROB_ID).version(1)
-            .createdAt(Instant.now()).updatedAt(Instant.now())
-            .build();
-        given(userDiagramRepository.findById(DIAG_ID)).willReturn(Optional.of(diagram));
+        // NOTE: cache hit returns before any repo calls — no repo stub needed here
 
         DiagramFeedback result = aiFeedbackService.reviewDiagram(DIAG_ID, USER_ID);
 
