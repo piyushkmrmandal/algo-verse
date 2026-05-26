@@ -18,7 +18,7 @@ RUN --mount=type=cache,target=/root/.m2 \
 # Copy source and build
 COPY src ./src
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn package -DskipTests -B -q
+    mvn package -Dmaven.test.skip=true -B -q
 
 # ---- Runtime Stage ----
 FROM eclipse-temurin:21-jre-alpine AS runtime

@@ -14,7 +14,7 @@ RUN apk add --no-cache maven && \
 
 # Copy source and build
 COPY src/ src/
-RUN mvn package -DskipTests -q
+RUN mvn package -Dmaven.test.skip=true -q
 
 # =============================================================================
 # Stage 2 — Runtime

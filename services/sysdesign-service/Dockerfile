@@ -11,7 +11,7 @@ COPY src ./src
 
 # Build (skip tests in Docker build — tests run in CI)
 RUN apk add --no-cache maven && \
-    mvn package -DskipTests --no-transfer-progress
+    mvn package -Dmaven.test.skip=true --no-transfer-progress
 
 # ─────────────────────────────────────────────────────────────────
 # Stage 2: Runtime

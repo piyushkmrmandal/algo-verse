@@ -3,7 +3,7 @@ WORKDIR /workspace
 COPY pom.xml .
 RUN apk add --no-cache maven && mvn dependency:go-offline -q || true
 COPY src/ src/
-RUN mvn package -DskipTests -q
+RUN mvn package -Dmaven.test.skip=true -q
 
 FROM eclipse-temurin:21-jre-alpine AS runtime
 LABEL service="notification-service"
