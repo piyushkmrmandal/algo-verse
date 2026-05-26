@@ -65,6 +65,7 @@ AlgoVerse is built for software engineers who want to go beyond grinding problem
 | **Dead code removal — claude_client.py deleted after full Ollama migration** | ✅ Done |
 | **Three.js algorithm visualizations — Sorting (5 algos), BST, Graph BFS/DFS (`/visualize` page)** | ✅ Done |
 | **CI fix — `@algoverse/ast-parser` workspace, `@testing-library/dom` peer dep, strict TS errors** | ✅ Done |
+| **`.env.example` corrected — removed stale `ANTHROPIC_API_KEY`, fixed JWT to RS256 keys, added all 11 service env vars** | ✅ Done |
 | Admin panel — problem authoring, analytics | 🔵 Planned |
 | Vitest unit tests — XpCounter, StreakTracker, AppNav components | 🔵 Planned |
 
