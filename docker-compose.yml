@@ -329,6 +329,34 @@ services:
     networks:
       - algoverse-net
 
+  analytics-service:
+    build:
+      context: ./services/analytics-service
+      dockerfile: Dockerfile
+    container_name: algoverse-analytics-service
+    restart: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8085:8085"
+    environment:
+      <<: *common-env
+      ANALYTICS_DB_URL: ${ANALYTICS_DB_URL:-jdbc:postgresql://postgres:5432/analytics_db}
+      DB_USERNAME: ${POSTGRES_USER:-algoverse}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+      SERVER_PORT: 8085
+    networks:
+      - algoverse-net
+
   ai-service:
     build:
       context: ./services/ai-service

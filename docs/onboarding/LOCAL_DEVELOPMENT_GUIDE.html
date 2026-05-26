@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AlgoVerse — Local Development Guide</title>
+<style>
+  /* ── Reset & base ─────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 13px; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: #1e2533;
+    line-height: 1.65;
+    background: #fff;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 48px 80px;
+  }
+
+  /* ── Print ───────────────────────────────────────────── */
+  @media print {
+    body { padding: 20px 28px; font-size: 11px; }
+    .no-print { display: none; }
+    h1, h2, h3 { page-break-after: avoid; }
+    pre, table, .card { page-break-inside: avoid; }
+    a { color: inherit; text-decoration: none; }
+  }
+
+  /* ── Typography ──────────────────────────────────────── */
+  h1 { font-size: 2rem; font-weight: 800; color: #6366f1; margin-bottom: 6px; }
+  h2 { font-size: 1.25rem; font-weight: 700; color: #1e2533; margin: 36px 0 12px;
+       border-bottom: 2px solid #e8eaf0; padding-bottom: 6px; }
+  h3 { font-size: 1.05rem; font-weight: 700; color: #4f46e5; margin: 22px 0 8px; }
+  h4 { font-size: 0.95rem; font-weight: 600; color: #374151; margin: 14px 0 6px; }
+  p  { margin-bottom: 10px; }
+  ul, ol { padding-left: 22px; margin-bottom: 10px; }
+  li { margin-bottom: 4px; }
+  strong { color: #111827; }
+  a  { color: #6366f1; }
+
+  /* ── Cover ───────────────────────────────────────────── */
+  .cover {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: #fff;
+    padding: 48px 40px;
+    border-radius: 16px;
+    margin-bottom: 40px;
+  }
+  .cover h1 { color: #fff; font-size: 2.4rem; }
+  .cover .subtitle { font-size: 1.1rem; opacity: .85; margin-top: 8px; }
+  .cover .meta { margin-top: 20px; font-size: .85rem; opacity: .7; display: flex; gap: 24px; flex-wrap: wrap; }
+
+  /* ── TOC ─────────────────────────────────────────────── */
+  .toc {
+    background: #f8f9ff;
+    border: 1px solid #e0e3f8;
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin-bottom: 36px;
+  }
+  .toc h2 { border: none; margin: 0 0 14px; font-size: 1rem; color: #6366f1; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 5px; }
+  .toc a { color: #4f46e5; text-decoration: none; font-weight: 500; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* ── Cards ───────────────────────────────────────────── */
+  .card {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin-bottom: 18px;
+    background: #fafafa;
+  }
+  .card.warn  { background: #fffbeb; border-color: #fcd34d; }
+  .card.info  { background: #eff6ff; border-color: #93c5fd; }
+  .card.success { background: #f0fdf4; border-color: #86efac; }
+  .card.danger  { background: #fef2f2; border-color: #fca5a5; }
+  .card-title { font-weight: 700; font-size: .9rem; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+
+  /* ── Service cards ───────────────────────────────────── */
+  .svc {
+    border-left: 4px solid #6366f1;
+    background: #fafbff;
+    border-radius: 0 12px 12px 0;
+    padding: 18px 20px;
+    margin-bottom: 22px;
+  }
+  .svc.infra { border-color: #10b981; }
+  .svc.python { border-color: #f59e0b; }
+  .svc-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .svc-name { font-size: 1rem; font-weight: 700; color: #1e2533; }
+  .svc-port { background: #6366f1; color: #fff; font-size: .75rem; font-weight: 700;
+              padding: 2px 8px; border-radius: 20px; font-family: monospace; }
+  .svc-port.infra { background: #10b981; }
+  .svc-port.python { background: #f59e0b; color: #1e2533; }
+  .svc-desc { font-size: .85rem; color: #6b7280; margin-bottom: 10px; }
+  .deps { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .dep { background: #e0e7ff; color: #4338ca; font-size: .75rem; padding: 2px 8px;
+         border-radius: 12px; font-weight: 600; }
+  .dep.infra { background: #d1fae5; color: #065f46; }
+
+  /* ── Code blocks ─────────────────────────────────────── */
+  pre {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 16px 20px;
+    border-radius: 10px;
+    font-size: .82rem;
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    overflow-x: auto;
+    margin-bottom: 14px;
+    line-height: 1.55;
+  }
+  code {
+    background: #f1f5f9;
+    color: #6366f1;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    font-size: .85em;
+  }
+  pre code { background: none; color: inherit; padding: 0; }
+  .comment { color: #64748b; }
+  .cmd { color: #7dd3fc; }
+  .str { color: #86efac; }
+  .kw  { color: #f0abfc; }
+
+  /* ── Tables ──────────────────────────────────────────── */
+  table { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: .88rem; }
+  th { background: #6366f1; color: #fff; text-align: left; padding: 9px 14px; font-weight: 600; }
+  td { padding: 8px 14px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8f9ff; }
+  tr:hover td { background: #eff1ff; }
+
+  /* ── Steps ───────────────────────────────────────────── */
+  .step {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 18px;
+    align-items: flex-start;
+  }
+  .step-num {
+    flex-shrink: 0;
+    width: 28px; height: 28px;
+    background: #6366f1;
+    color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: .85rem;
+  }
+  .step-body { flex: 1; padding-top: 4px; }
+
+  /* ── Badges / tags ───────────────────────────────────── */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px;
+           font-size: .75rem; font-weight: 700; }
+  .badge.java    { background: #fef3c7; color: #92400e; }
+  .badge.python  { background: #fef9c3; color: #713f12; }
+  .badge.ts      { background: #dbeafe; color: #1e3a8a; }
+  .badge.infra   { background: #d1fae5; color: #065f46; }
+
+  /* ── Divider ──────────────────────────────────────────── */
+  hr { border: none; border-top: 1px solid #e5e7eb; margin: 32px 0; }
+
+  /* ── Footer ───────────────────────────────────────────── */
+  .footer { margin-top: 60px; padding-top: 20px; border-top: 2px solid #e5e7eb;
+            text-align: center; color: #9ca3af; font-size: .8rem; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     COVER
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="cover">
+  <h1>AlgoVerse</h1>
+  <div class="subtitle">Local Development Guide — Full Stack Setup with Docker</div>
+  <div class="meta">
+    <span>📅 Updated: 2026-05-26</span>
+    <span>🐳 Docker Desktop 4.x required</span>
+    <span>☕ Java 21 · 🐍 Python 3.12 · 🟦 Node.js 20+</span>
+    <span>📖 Version 1.0</span>
+  </div>
+</div>
+
+<p class="no-print" style="background:#fef9c3;border:1px solid #fcd34d;padding:10px 16px;border-radius:8px;margin-bottom:28px;font-size:.85rem;">
+  💡 <strong>To save as PDF:</strong> Open in Chrome/Edge → <kbd>Cmd+P</kbd> (Mac) or <kbd>Ctrl+P</kbd> (Windows) → Destination: <em>Save as PDF</em> → Save.
+</p>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     TABLE OF CONTENTS
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="toc">
+  <h2>📋 Table of Contents</h2>
+  <ol>
+    <li><a href="#prerequisites">Prerequisites &amp; System Requirements</a></li>
+    <li><a href="#repo">Repository Setup</a></li>
+    <li><a href="#env">Environment Variables (.env)</a></li>
+    <li><a href="#infra">Starting Infrastructure with Docker</a>
+      <ol>
+        <li><a href="#postgres">PostgreSQL 16</a></li>
+        <li><a href="#redis">Redis 7</a></li>
+        <li><a href="#kafka">Apache Kafka + Zookeeper</a></li>
+        <li><a href="#elasticsearch">Elasticsearch 8</a></li>
+        <li><a href="#mongodb">MongoDB 7</a></li>
+      </ol>
+    </li>
+    <li><a href="#db-init">Database Initialisation</a></li>
+    <li><a href="#kafka-topics">Kafka Topics</a></li>
+    <li><a href="#services">Starting Each Service</a>
+      <ol>
+        <li><a href="#svc-auth">auth-service (8081)</a></li>
+        <li><a href="#svc-problem">problem-service (8082)</a></li>
+        <li><a href="#svc-submission">submission-service (8083)</a></li>
+        <li><a href="#svc-gamification">gamification-service (8084)</a></li>
+        <li><a href="#svc-analytics">analytics-service (8085)</a></li>
+        <li><a href="#svc-sysdesign">sysdesign-service (8086)</a></li>
+        <li><a href="#svc-execution">execution-service (8087)</a></li>
+        <li><a href="#svc-collaboration">collaboration-service (8088)</a></li>
+        <li><a href="#svc-ai">ai-service (8090)</a></li>
+        <li><a href="#svc-notification">notification-service (8091)</a></li>
+        <li><a href="#svc-visualization">visualization-service (8092)</a></li>
+      </ol>
+    </li>
+    <li><a href="#frontend">Frontend (Vite Dev Server)</a></li>
+    <li><a href="#fullstack">Full Stack with docker-compose (Recommended)</a></li>
+    <li><a href="#gateway">Nginx API Gateway</a></li>
+    <li><a href="#ports">Port Reference</a></li>
+    <li><a href="#verify">Verification &amp; Health Checks</a></li>
+    <li><a href="#troubleshoot">Troubleshooting</a></li>
+    <li><a href="#whats-left">What's Left to Build</a></li>
+  </ol>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     1. PREREQUISITES
+══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="prerequisites">1. Prerequisites &amp; System Requirements</h2>
+
+<div class="card warn">
+  <div class="card-title">⚠️ Minimum Hardware</div>
+  <ul>
+    <li><strong>RAM:</strong> 16 GB (8 GB absolute minimum — many services will be slow)</li>
+    <li><strong>Disk:</strong> 20 GB free (Docker images + volumes)</li>
+    <li><strong>CPU:</strong> 4 cores recommended</li>
+  </ul>
+</div>
+
+<table>
+  <tr><th>Tool</th><th>Version</th><th>Install</th><th>Purpose</th></tr>
+  <tr><td><strong>Docker Desktop</strong></td><td>4.x (Engine 25+)</td><td><a href="https://www.docker.com/products/docker-desktop/">docker.com</a></td><td>All infrastructure + service containers</td></tr>
+  <tr><td><strong>Java (JDK)</strong></td><td>21 (LTS)</td><td><code>brew install --cask temurin@21</code> or <a href="https://adoptium.net">adoptium.net</a></td><td>All Spring Boot services</td></tr>
+  <tr><td><strong>Maven</strong></td><td>3.9+</td><td><code>brew install maven</code></td><td>Building Java services</td></tr>
+  <tr><td><strong>Node.js</strong></td><td>20 LTS</td><td><code>brew install node@20</code> or <a href="https://nodejs.org">nodejs.org</a></td><td>Frontend (Vite + React)</td></tr>
+  <tr><td><strong>Python</strong></td><td>3.12</td><td><code>brew install python@3.12</code></td><td>ai-service (FastAPI) + visualization tracers</td></tr>
+  <tr><td><strong>Git</strong></td><td>2.x</td><td>Pre-installed on macOS</td><td>Source control</td></tr>
+</table>
+
+<h4>Verify installations</h4>
+<pre><code><span class="comment"># All of these must succeed before proceeding</span>
+docker --version          <span class="comment"># Docker version 25.x.x</span>
+docker compose version    <span class="comment"># Docker Compose version v2.x.x</span>
+java -version             <span class="comment"># openjdk version "21.x.x"</span>
+mvn -version              <span class="comment"># Apache Maven 3.9.x</span>
+node --version            <span class="comment"># v20.x.x</span>
+python3 --version         <span class="comment"># Python 3.12.x</span></code></pre>
+
+<div class="card info">
+  <div class="card-title">ℹ️ Docker Desktop Settings</div>
+  Open Docker Desktop → Settings → Resources and allocate at least:
+  <ul>
+    <li><strong>CPUs:</strong> 4</li>
+    <li><strong>Memory:</strong> 10 GB</li>
+    <li><strong>Swap:</strong> 2 GB</li>
+    <li><strong>Disk image size:</strong> 60 GB</li>
+  </ul>
+  Apply &amp; Restart Docker Desktop before continuing.
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     2. REPOSITORY SETUP
+══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="repo">2. Repository Setup</h2>
+
+<pre><code><span class="comment"># Clone the repository</span>
+git clone https://github.com/your-org/algoverse.git
+cd algoverse
+
+<span class="comment"># Install root-level Node dependencies (shared tooling)</span>
+npm install
+
+<span class="comment"># Install frontend dependencies</span>
+cd apps/web &amp;&amp; npm install &amp;&amp; cd ../..
+
+<span class="comment"># Verify the monorepo structure</span>
+ls -1
+<span class="comment"># Expected: apps/ docs/ docker/ infrastructure/ libs/ services/ Makefile docker-compose.yml</span></code></pre>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     3. ENVIRONMENT VARIABLES
+══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="env">3. Environment Variables</h2>
+
+<pre><code><span class="comment"># Copy the template</span>
+cp .env.example .env</code></pre>
+
+<p>Open <code>.env</code> and fill in the required values. The table below describes every variable:</p>
+
+<table>
+  <tr><th>Variable</th><th>Default</th><th>Required</th><th>Description</th></tr>
+  <tr><td><code>POSTGRES_USER</code></td><td>algoverse</td><td>No</td><td>PostgreSQL superuser name</td></tr>
+  <tr><td><code>POSTGRES_PASSWORD</code></td><td>secret</td><td><strong>Yes — change in prod</strong></td><td>PostgreSQL password</td></tr>
+  <tr><td><code>POSTGRES_DB</code></td><td>algoverse</td><td>No</td><td>Default DB (individual DBs created by init.sql)</td></tr>
+  <tr><td><code>REDIS_HOST</code></td><td>localhost</td><td>No</td><td>Redis host (use <code>redis</code> inside Docker)</td></tr>
+  <tr><td><code>REDIS_PORT</code></td><td>6379</td><td>No</td><td>Redis port</td></tr>
+  <tr><td><code>KAFKA_BOOTSTRAP_SERVERS</code></td><td>localhost:29092</td><td>No</td><td>Use <code>kafka:9092</code> inside Docker, <code>localhost:29092</code> outside</td></tr>
+  <tr><td><code>JWT_SECRET</code></td><td>—</td><td><strong>Yes</strong></td><td>HS256 secret for auth tokens (min 32 chars)</td></tr>
+  <tr><td><code>JWT_PUBLIC_KEY</code></td><td>—</td><td>Needed by downstream services</td><td>RS256 public key PEM (used by execution, collab, analytics, sysdesign)</td></tr>
+  <tr><td><code>ANTHROPIC_API_KEY</code></td><td>—</td><td><strong>Yes</strong> for AI features</td><td>Anthropic Claude API key from <a href="https://console.anthropic.com">console.anthropic.com</a></td></tr>
+  <tr><td><code>AUTH_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/auth_db</td><td>No</td><td>auth-service JDBC URL</td></tr>
+  <tr><td><code>PROBLEM_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/problem_db</td><td>No</td><td>problem-service JDBC URL</td></tr>
+  <tr><td><code>SUBMISSION_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/submission_db</td><td>No</td><td>submission-service JDBC URL</td></tr>
+  <tr><td><code>GAMIFICATION_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/gamification_db</td><td>No</td><td>gamification-service JDBC URL</td></tr>
+  <tr><td><code>ANALYTICS_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/analytics_db</td><td>No</td><td>analytics-service JDBC URL</td></tr>
+  <tr><td><code>COLLAB_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/collaboration_db</td><td>No</td><td>collaboration-service JDBC URL</td></tr>
+  <tr><td><code>NOTIFICATION_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/notification_db</td><td>No</td><td>notification-service JDBC URL</td></tr>
+  <tr><td><code>SYSDESIGN_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/sysdesign_db</td><td>No</td><td>sysdesign-service JDBC URL</td></tr>
+  <tr><td><code>EXECUTION_DB_URL</code></td><td>jdbc:postgresql://localhost:5432/execution_db</td><td>No</td><td>execution-service JDBC URL</td></tr>
+  <tr><td><code>AI_DB_URL</code></td><td>postgresql+asyncpg://algoverse:secret@localhost:5432/ai_db</td><td>No</td><td>ai-service asyncpg URL</td></tr>
+  <tr><td><code>MONGODB_URI</code></td><td>mongodb://localhost:27017/problemdb</td><td>No</td><td>MongoDB connection URI</td></tr>
+  <tr><td><code>ELASTICSEARCH_HOST</code></td><td>localhost</td><td>No</td><td>Elasticsearch host</td></tr>
+  <tr><td><code>AI_SERVICE_URL</code></td><td>http://localhost:8090</td><td>No</td><td>Used by sysdesign-service for AI feedback</td></tr>
+  <tr><td><code>PROBLEM_SERVICE_URL</code></td><td>http://localhost:8082</td><td>No</td><td>Used by execution-service to fetch test cases</td></tr>
+</table>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     4. INFRASTRUCTURE
+══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="infra">4. Starting Infrastructure with Docker</h2>
+
+<div class="card success">
+  <div class="card-title">✅ Recommended: Start all infra with one command</div>
+  <pre style="margin:0"><code>make infra
+<span class="comment"># or</span>
+docker compose -f docker-compose.infra.yml up -d</code></pre>
+</div>
+
+<p>To start each infrastructure component individually (e.g. if you want fine-grained control), use the commands below. All commands create a shared <code>algoverse-net</code> bridge network so services can resolve each other by container name.</p>
+
+<pre><code><span class="comment"># Create the shared network once</span>
+docker network create algoverse-net 2>/dev/null || true</code></pre>
+
+<h3 id="postgres">4.1 PostgreSQL 16</h3>
+<div class="svc infra">
+  <div class="svc-header">
+    <span class="svc-name">PostgreSQL</span>
+    <span class="svc-port infra">:5432</span>
+    <span class="badge infra">Infrastructure</span>
+  </div>
+  <div class="svc-desc">Primary relational database. Each microservice gets its own logical database, all on this single Postgres instance. The <code>init.sql</code> script creates all 10 databases on first boot.</div>
+
+<pre><code>docker run -d \
+  --name algoverse-postgres \
+  --network algoverse-net \
+  -p 5432:5432 \
+  -e POSTGRES_USER=algoverse \
+  -e POSTGRES_PASSWORD=secret \
+  -e POSTGRES_DB=algoverse \
+  -v algoverse_postgres_data:/var/lib/postgresql/data \
+  -v $(pwd)/docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro \
+  --health-cmd="pg_isready -U algoverse" \
+  --health-interval=10s \
+  --health-retries=5 \
+  postgres:16-alpine</code></pre>
+
+  <p><strong>Databases created by init.sql:</strong></p>
+  <p>
+    <code>auth_db</code> &nbsp;·&nbsp; <code>problem_db</code> &nbsp;·&nbsp; <code>submission_db</code> &nbsp;·&nbsp;
+    <code>gamification_db</code> &nbsp;·&nbsp; <code>ai_db</code> &nbsp;·&nbsp; <code>analytics_db</code> &nbsp;·&nbsp;
+    <code>sysdesign_db</code> &nbsp;·&nbsp; <code>execution_db</code> &nbsp;·&nbsp; <code>collaboration_db</code> &nbsp;·&nbsp;
+    <code>notification_db</code>
+  </p>
+
+  <h4>Connect with psql</h4>
+<pre><code>docker exec -it algoverse-postgres psql -U algoverse -d auth_db</code></pre>
+
+  <h4>Connect with a GUI (TablePlus / DBeaver)</h4>
+  <ul>
+    <li>Host: <code>localhost</code> · Port: <code>5432</code></li>
+    <li>User: <code>algoverse</code> · Password: <code>secret</code></li>
+    <li>Select the database you want to inspect</li>
+  </ul>
+</div>
+
+<h3 id="redis">4.2 Redis 7</h3>
+<div class="svc infra">
+  <div class="svc-header">
+    <span class="svc-name">Redis</span>
+    <span class="svc-port infra">:6379</span>
+    <span class="badge infra">Infrastructure</span>
+  </div>
+  <div class="svc-desc">Used by auth-service (refresh token store), problem-service (response cache), gamification-service (leaderboard), submission-service (rate limiting), collaboration-service (room state), visualization-service (trace cache), and notification-service (idempotency).</div>
+
+<pre><code>docker run -d \
+  --name algoverse-redis \
+  --network algoverse-net \
+  -p 6379:6379 \
+  -v algoverse_redis_data:/data \
+  --health-cmd="redis-cli ping" \
+  --health-interval=10s \
+  redis:7-alpine \
+  redis-server --save 60 1 --loglevel warning</code></pre>
+
+  <h4>Test connection</h4>
+<pre><code>docker exec -it algoverse-redis redis-cli ping
+<span class="comment"># Expected: PONG</span></code></pre>
+</div>
+
+<h3 id="kafka">4.3 Apache Kafka + Zookeeper</h3>
+<div class="svc infra">
+  <div class="svc-header">
+    <span class="svc-name">Zookeeper + Kafka</span>
+    <span class="svc-port infra">:2181 / :9092 / :29092</span>
+    <span class="badge infra">Infrastructure</span>
+  </div>
+  <div class="svc-desc">Event backbone. Services communicate asynchronously via 13 topics (submission results, badge events, XP awards, notifications, etc.). Port 29092 is the host-accessible listener; services inside Docker use <code>kafka:9092</code>.</div>
+
+<pre><code><span class="comment"># Step 1 — Zookeeper (must be healthy before Kafka starts)</span>
+docker run -d \
+  --name algoverse-zookeeper \
+  --network algoverse-net \
+  -p 2181:2181 \
+  -e ZOOKEEPER_CLIENT_PORT=2181 \
+  -e ZOOKEEPER_TICK_TIME=2000 \
+  confluentinc/cp-zookeeper:7.6.0
+
+<span class="comment"># Wait ~10 seconds, then start Kafka</span>
+
+<span class="comment"># Step 2 — Kafka broker</span>
+docker run -d \
+  --name algoverse-kafka \
+  --network algoverse-net \
+  -p 9092:9092 \
+  -p 29092:29092 \
+  -e KAFKA_BROKER_ID=1 \
+  -e KAFKA_ZOOKEEPER_CONNECT=algoverse-zookeeper:2181 \
+  -e KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT \
+  -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://algoverse-kafka:9092,PLAINTEXT_HOST://localhost:29092 \
+  -e KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT \
+  -e KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 \
+  -e KAFKA_AUTO_CREATE_TOPICS_ENABLE=false \
+  confluentinc/cp-kafka:7.6.0</code></pre>
+
+  <div class="card info" style="margin-top:12px">
+    <div class="card-title">ℹ️ Kafka UI (optional)</div>
+    <pre style="margin:0"><code>docker run -d \
+  --name algoverse-kafka-ui \
+  --network algoverse-net \
+  -p 8089:8080 \
+  -e KAFKA_CLUSTERS_0_NAME=local \
+  -e KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=algoverse-kafka:9092 \
+  provectuslabs/kafka-ui:latest</code></pre>
+    Then open <a href="http://localhost:8089">http://localhost:8089</a>
+  </div>
+</div>
+
+<h3 id="elasticsearch">4.4 Elasticsearch 8</h3>
+<div class="svc infra">
+  <div class="svc-header">
+    <span class="svc-name">Elasticsearch</span>
+    <span class="svc-port infra">:9200</span>
+    <span class="badge infra">Infrastructure</span>
+  </div>
+  <div class="svc-desc">Full-text problem search. Used exclusively by <strong>problem-service</strong>, which auto-indexes all problems on startup via a <code>@EventListener(ApplicationReadyEvent.class)</code> hook.</div>
+
+<pre><code>docker run -d \
+  --name algoverse-elasticsearch \
+  --network algoverse-net \
+  -p 9200:9200 \
+  -e discovery.type=single-node \
+  -e xpack.security.enabled=false \
+  -e ES_JAVA_OPTS="-Xms512m -Xmx512m" \
+  -v algoverse_elasticsearch_data:/usr/share/elasticsearch/data \
+  --health-cmd="curl -sf http://localhost:9200/_cluster/health || exit 1" \
+  --health-interval=15s \
+  elasticsearch:8.13.0</code></pre>
+
+  <h4>Verify</h4>
+<pre><code>curl http://localhost:9200/_cluster/health?pretty
+<span class="comment"># "status" should be "green" or "yellow" (yellow is fine for single-node)</span></code></pre>
+</div>
+
+<h3 id="mongodb">4.5 MongoDB 7</h3>
+<div class="svc infra">
+  <div class="svc-header">
+    <span class="svc-name">MongoDB</span>
+    <span class="svc-port infra">:27017</span>
+    <span class="badge infra">Infrastructure</span>
+  </div>
+  <div class="svc-desc">Document store for problem editorial content, solution templates, and system design diagram payloads (nodes + edges JSON blobs). Used by <strong>problem-service</strong> and <strong>sysdesign-service</strong>.</div>
+
+<pre><code>docker run -d \
+  --name algoverse-mongodb \
+  --network algoverse-net \
+  -p 27017:27017 \
+  -v algoverse_mongodb_data:/data/db \
+  --health-cmd='mongosh --quiet --eval "db.runCommand({ping:1}).ok" || exit 1' \
+  --health-interval=10s \
+  mongo:7</code></pre>
+
+  <h4>Connect with mongosh</h4>
+<pre><code>docker exec -it algoverse-mongodb mongosh
+<span class="comment"># Then: use problemdb</span></code></pre>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     5. DATABASE INIT
+══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="db-init">5. Database Initialisation</h2>
+
+<p>The <code>docker/postgres/init.sql</code> file runs <strong>automatically</strong> on the first container start. It creates all 10 databases and grants privileges to the <code>algoverse</code> user.</p>
+
+<p>Each Spring Boot service uses <strong>Flyway</strong> to manage its own schema. Migrations live at <code>src/main/resources/db/migration/</code> and run automatically on service startup. No manual DDL execution is needed.</p>
+
+<div class="card warn">
+  <div class="card-title">⚠️ First-start order matters</div>
+  PostgreSQL must be <strong>healthy</strong> before any Spring Boot service starts, otherwise Flyway will fail to connect and the service will crash-loop. Always use <code>depends_on: condition: service_healthy</code> in docker-compose (already configured).
+</div>
+
+<h4>Flyway migration files per service</h4>
+<table>
+  <tr><th>Service</th><th>Database</th><th>Migration files</th></tr>
+  <tr><td>auth-service</td><td>auth_db</td><td>V1__init_auth.sql, V2__add_oauth2.sql, …</td></tr>
+  <tr><td>problem-service</td><td>problem_db</td><td>V1__init_problems.sql, V2__seed_problems.sql, …</td></tr>
+  <tr><td>submission-service</td><td>submission_db</td><td>V1__init_submissions.sql, …</td></tr>
+  <tr><td>gamification-service</td><td>gamification_db</td><td>V1__init_gamification.sql, V2__seed_badges.sql</td></tr>
+  <tr><td>analytics-service</td><td>analytics_db</td><td>V1__init_analytics.sql, …</td></tr>
+  <tr><td>sysdesign-service</td><td>sysdesign_db</td><td>V1__init_sysdesign.sql, V2__seed_problems.sql, V3__fix_categories.sql</td></tr>
+  <tr><td>execution-service</td><td>execution_db</td><td>V1__init_execution.sql, …</td></tr>
+  <tr><td>collaboration-service</td><td>collaboration_db</td><td>V1__init_collaboration.sql, …</td></tr>
+  <tr><td>notification-service</td><td>notification_db</td><td>V1__init_notifications.sql</td></tr>
+  <tr><td>ai-service</td><td>ai_db</td><td>Alembic migrations (auto-run on startup)</td></tr>
+</table>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     6. KAFKA TOPICS
+══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="kafka-topics">6. Kafka Topics</h2>
+
+<p>All 13 required topics must exist before services start consuming. The <code>kafka-setup</code> container (in docker-compose) runs the creation script automatically. To run it manually:</p>
+
+<pre><code><span class="comment"># Option A — via docker exec (if kafka container is already running)</span>
+docker exec algoverse-kafka \
+  kafka-topics --bootstrap-server localhost:9092 \
+  --create --topic algoverse.submission.graded --partitions 3 --replication-factor 1
+
+<span class="comment"># Option B — use the make target (runs the full create-topics.sh script)</span>
+make kafka-topics</code></pre>
+
+<h4>All required topics</h4>
+<table>
+  <tr><th>Topic</th><th>Producers</th><th>Consumers</th></tr>
+  <tr><td><code>algoverse.submission.graded</code></td><td>execution-service</td><td>gamification-service, analytics-service, notification-service</td></tr>
+  <tr><td><code>algoverse.xp.awarded</code></td><td>gamification-service</td><td>analytics-service</td></tr>
+  <tr><td><code>algoverse.badge.earned</code></td><td>gamification-service</td><td>notification-service, analytics-service</td></tr>
+  <tr><td><code>algoverse.badges.earned</code></td><td>gamification-service</td><td>notification-service</td></tr>
+  <tr><td><code>algoverse.streaks.updated</code></td><td>gamification-service</td><td>notification-service</td></tr>
+  <tr><td><code>algoverse.notifications.requested</code></td><td>Any service</td><td>notification-service</td></tr>
+  <tr><td><code>algoverse.hints.requested</code></td><td>problem-service</td><td>ai-service</td></tr>
+  <tr><td><code>algoverse.hints.response</code></td><td>ai-service</td><td>problem-service</td></tr>
+  <tr><td><code>algoverse.user.registered</code></td><td>auth-service</td><td>gamification-service, analytics-service</td></tr>
+  <tr><td><code>algoverse.execution.requested</code></td><td>submission-service</td><td>execution-service</td></tr>
+  <tr><td><code>algoverse.execution.completed</code></td><td>execution-service</td><td>submission-service</td></tr>
+  <tr><td><code>algoverse.collab.room.created</code></td><td>collaboration-service</td><td>analytics-service</td></tr>
+  <tr><td><code>algoverse.collab.room.ended</code></td><td>collaboration-service</td><td>analytics-service</td></tr>
+</table>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     7. SERVICES
+══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="services">7. Starting Each Service</h2>
+
+<p>Every service can be started in two ways: <strong>(A) locally</strong> with Maven/uvicorn (for active development — fast restart, IDE debug), or <strong>(B) via Docker</strong>. Both approaches are shown for each service.</p>
+
+<div class="card info">
+  <div class="card-title">ℹ️ Java services — JAVA_HOME</div>
+  Always export <code>JAVA_HOME</code> pointing to JDK 21 before running Maven commands:
+  <pre style="margin:6px 0 0"><code><span class="comment"># macOS (Homebrew Temurin 21)</span>
+export JAVA_HOME=$(/usr/libexec/java_home -v 21)
+<span class="comment"># Linux</span>
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64</code></pre>
+</div>
+
+<!-- ─── auth-service ──────────────────────────────────────────────────────── -->
+<h3 id="svc-auth">7.1 auth-service <span class="badge java">Java 21</span></h3>
+<div class="svc">
+  <div class="svc-header">
+    <span class="svc-name">auth-service</span>
+    <span class="svc-port">:8081</span>
+  </div>
+  <div class="svc-desc">JWT RS256 authentication, refresh token rotation, OAuth2 (Google / GitHub / LinkedIn), user registration &amp; login. <strong>All other services depend on the public key it issues.</strong></div>
+  <div class="deps">
+    <span class="dep infra">PostgreSQL → auth_db</span>
+    <span class="dep infra">Redis</span>
+    <span class="dep infra">Kafka</span>
+  </div>
+
+  <h4>A) Run locally</h4>
+<pre><code>cd services/auth-service
+JAVA_HOME=$(/usr/libexec/java_home -v 21) \
+  SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/auth_db \
+  SPRING_DATASOURCE_USERNAME=algoverse \
+  SPRING_DATASOURCE_PASSWORD=secret \
+  SPRING_REDIS_HOST=localhost \
+  SPRING_KAFKA_BOOTSTRAP_SERVERS=localhost:29092 \
+  JWT_SECRET=change-me-in-production-use-256-bit-key \
+  mvn spring-boot:run</code></pre>
+
+  <h4>B) Build &amp; run with Docker</h4>
+<pre><code>cd services/auth-service
+docker build -t algoverse/auth-service:local .
+docker run -d \
+  --name algoverse-auth-service \
+  --network algoverse-net \
+  -p 8081:8081 \
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://algoverse-postgres:5432/auth_db \
+  -e SPRING_DATASOURCE_USERNAME=algoverse \
+  -e SPRING_DATASOURCE_PASSWORD=secret \
+  -e SPRING_REDIS_HOST=algoverse-redis \
+  -e SPRING_KAFKA_BOOTSTRAP_SERVERS=algoverse-kafka:9092 \
+  -e JWT_SECRET=change-me-in-production-use-256-bit-key \
+  algoverse/auth-service:local</code></pre>
+
+  <h4>Health &amp; smoke test</h4>
+<pre><code>curl http://localhost:8081/actuator/health
+<span class="comment"># {"status":"UP"}</span>
+
+curl -X POST http://localhost:8081/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@algoverse.io","password":"Test1234!","displayName":"Tester"}'</code></pre>
+</div>
+
+<!-- ─── problem-service ───────────────────────────────────────────────────── -->
+<h3 id="svc-problem">7.2 problem-service <span class="badge java">Java 21</span></h3>
+<div class="svc">
+  <div class="svc-header">
+    <span class="svc-name">problem-service</span>
+    <span class="svc-port">:8082</span>
+  </div>
+  <div class="svc-desc">DSA problem catalog — CRUD, Elasticsearch full-text search, tag filtering, Redis response caching, pagination. Auto-indexes all problems into Elasticsearch on startup.</div>
+  <div class="deps">
+    <span class="dep infra">PostgreSQL → problem_db</span>
+    <span class="dep infra">MongoDB</span>
+    <span class="dep infra">Elasticsearch</span>
+  </div>
+
+  <h4>A) Run locally</h4>
+<pre><code>cd services/problem-service
+JAVA_HOME=$(/usr/libexec/java_home -v 21) \
+  SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/problem_db \
+  SPRING_DATASOURCE_USERNAME=algoverse \
+  SPRING_DATASOURCE_PASSWORD=secret \
+  SPRING_ELASTICSEARCH_URIS=http://localhost:9200 \
+  SPRING_DATA_MONGODB_URI=mongodb://localhost:27017/problemdb \
+  mvn spring-boot:run</code></pre>
+
+  <h4>B) Docker</h4>
+<pre><code>docker build -t algoverse/problem-service:local services/problem-service
+docker run -d \
+  --name algoverse-problem-service \
+  --network algoverse-net \
+  -p 8082:8082 \
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://algoverse-postgres:5432/problem_db \
+  -e SPRING_DATASOURCE_USERNAME=algoverse \
+  -e SPRING_DATASOURCE_PASSWORD=secret \
+  -e SPRING_ELASTICSEARCH_URIS=http://algoverse-elasticsearch:9200 \
+  -e SPRING_DATA_MONGODB_URI=mongodb://algoverse-mongodb:27017/problemdb \
+  algoverse/problem-service:local</code></pre>
+
+  <h4>Health</h4>
+<pre><code>curl http://localhost:8082/actuator/health
+curl "http://localhost:8082/api/problems?page=0&amp;size=5"</code></pre>
+</div>
+
+<!-- ─── submission-service ────────────────────────────────────────────────── -->
+<h3 id="svc-submission">7.3 submission-service <span class="badge java">Java 21</span></h3>
+<div class="svc">
+  <div class="svc-header">
+    <span class="svc-name">submission-service</span>
+    <span class="svc-port">:8083</span>
+  </div>
+  <div class="svc-desc">Accepts code submissions, stores them in PostgreSQL, publishes <code>algoverse.execution.requested</code> to Kafka, and streams results back to the frontend over STOMP WebSocket.</div>
+  <div class="deps">
+    <span class="dep infra">PostgreSQL → submission_db</span>
+    <span class="dep infra">Redis</span>
+    <span class="dep infra">Kafka</span>
+  </div>
+
+  <h4>A) Run locally</h4>
+<pre><code>cd services/submission-service
+JAVA_HOME=$(/usr/libexec/java_home -v 21) \
+  SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/submission_db \
+  SPRING_DATASOURCE_USERNAME=algoverse \
+  SPRING_DATASOURCE_PASSWORD=secret \
+  SPRING_REDIS_HOST=localhost \
+  SPRING_KAFKA_BOOTSTRAP_SERVERS=localhost:29092 \
+  mvn spring-boot:run</code></pre>
+
+  <h4>B) Docker</h4>
+<pre><code>docker build -t algoverse/submission-service:local services/submission-service
+docker run -d --name algoverse-submission-service --network algoverse-net -p 8083:8083 \
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://algoverse-postgres:5432/submission_db \
+  -e SPRING_DATASOURCE_USERNAME=algoverse -e SPRING_DATASOURCE_PASSWORD=secret \
+  -e SPRING_REDIS_HOST=algoverse-redis \
+  -e SPRING_KAFKA_BOOTSTRAP_SERVERS=algoverse-kafka:9092 \
+  algoverse/submission-service:local</code></pre>
+</div>
+
+<!-- ─── gamification-service ─────────────────────────────────────────────── -->
+<h3 id="svc-gamification">7.4 gamification-service <span class="badge java">Java 21</span></h3>
+<div class="svc">
+  <div class="svc-header">
+    <span class="svc-name">gamification-service</span>
+    <span class="svc-port">:8084</span>
+  </div>
+  <div class="svc-desc">XP system, streak tracking, badge award engine, leaderboard. Consumes <code>algoverse.submission.graded</code> and <code>algoverse.user.registered</code> events. The V2 Flyway migration seeds 8 badge definitions.</div>
+  <div class="deps">
+    <span class="dep infra">PostgreSQL → gamification_db</span>
+    <span class="dep infra">Redis (leaderboard sorted sets)</span>
+    <span class="dep infra">Kafka</span>
+  </div>
+
+  <h4>A) Run locally</h4>
+<pre><code>cd services/gamification-service
+JAVA_HOME=$(/usr/libexec/java_home -v 21) \
+  SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/gamification_db \
+  SPRING_DATASOURCE_USERNAME=algoverse \
+  SPRING_DATASOURCE_PASSWORD=secret \
+  SPRING_REDIS_HOST=localhost \
+  SPRING_KAFKA_BOOTSTRAP_SERVERS=localhost:29092 \
+  mvn spring-boot:run</code></pre>
+
+  <h4>B) Docker</h4>
+<pre><code>docker build -t algoverse/gamification-service:local services/gamification-service
+docker run -d --name algoverse-gamification-service --network algoverse-net -p 8084:8084 \
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://algoverse-postgres:5432/gamification_db \
+  -e SPRING_DATASOURCE_USERNAME=algoverse -e SPRING_DATASOURCE_PASSWORD=secret \
+  -e SPRING_REDIS_HOST=algoverse-redis \
+  -e SPRING_KAFKA_BOOTSTRAP_SERVERS=algoverse-kafka:9092 \
+  algoverse/gamification-service:local</code></pre>
+</div>
+
+<!-- ─── analytics-service ────────────────────────────────────────────────── -->
+<h3 id="svc-analytics">7.5 analytics-service <span class="badge java">Java 21</span></h3>
+<div class="svc">
+  <div class="svc-header">
+    <span class="svc-name">analytics-service</span>
+    <span class="svc-port">:8085</span>
+  </div>
+  <div class="svc-desc">Platform-wide event analytics. Consumes Kafka events and aggregates metrics (daily active users, submission rates, badge counts, problem difficulty heatmap). Exposes a REST API for the admin dashboard.</div>
+  <div class="deps">
+    <span class="dep infra">PostgreSQL → analytics_db</span>
+    <span class="dep infra">Redis</span>
+    <span class="dep infra">Kafka</span>
+  </div>
+
+  <h4>A) Run locally</h4>
+<pre><code>cd services/analytics-service
+JAVA_HOME=$(/usr/libexec/java_home -v 21) \
+  ANALYTICS_DB_URL=jdbc:postgresql://localhost:5432/analytics_db \
+  DB_USERNAME=algoverse \
+  DB_PASSWORD=secret \
+  REDIS_HOST=localhost \
+  KAFKA_BOOTSTRAP_SERVERS=localhost:29092 \
+  mvn spring-boot:run</code></pre>
+
+  <h4>B) Docker</h4>
+<pre><code>docker build -t algoverse/analytics-service:local services/analytics-service
+docker run -d --name algoverse-analytics-service --network algoverse-net -p 8085:8085 \
+  -e ANALYTICS_DB_URL=jdbc:postgresql://algoverse-postgres:5432/analytics_db \
+  -e DB_USERNAME=algoverse -e DB_PASSWORD=secret \
+  -e REDIS_HOST=algoverse-redis \
+  -e KAFKA_BOOTSTRAP_SERVERS=algoverse-kafka:9092 \
+  algoverse/analytics-service:local</code></pre>
+</div>
+
+<!-- ─── sysdesign-service ─────────────────────────────────────────────────── -->
+<h3 id="svc-sysdesign">7.6 sysdesign-service <span class="badge java">Java 21</span></h3>
+<div class="svc">
+  <div class="svc-header">
+    <span class="svc-name">sysdesign-service</span>
+    <span class="svc-port">:8086</span>
+  </div>
+  <div class="svc-desc">System design problem catalog (19 problems across 6 categories), user diagram storage (nodes + edges as MongoDB documents), and AI feedback by calling ai-service. V3 migration seeds all problems with correct category names.</div>
+  <div class="deps">
+    <span class="dep infra">PostgreSQL → sysdesign_db</span>
+    <span class="dep infra">MongoDB</span>
+    <span class="dep infra">Redis</span>
+    <span class="dep">ai-service :8090</span>
+  </div>
+
+  <h4>A) Run locally</h4>
+<pre><code>cd services/sysdesign-service
+JAVA_HOME=$(/usr/libexec/java_home -v 21) \
+  SYSDESIGN_DB_URL=jdbc:postgresql://localhost:5432/sysdesign_db \
+  DB_USERNAME=algoverse DB_PASSWORD=secret \
+  MONGODB_URI=mongodb://localhost:27017/sysdesigndb \
+  REDIS_HOST=localhost \
+  AI_SERVICE_URL=http://localhost:8090 \
+  mvn spring-boot:run</code></pre>
+
+  <h4>B) Docker</h4>
+<pre><code>docker build -t algoverse/sysdesign-service:local services/sysdesign-service
+docker run -d --name algoverse-sysdesign-service --network algoverse-net -p 8086:8086 \
+  -e SYSDESIGN_DB_URL=jdbc:postgresql://algoverse-postgres:5432/sysdesign_db \
+  -e DB_USERNAME=algoverse -e DB_PASSWORD=secret \
+  -e MONGODB_URI=mongodb://algoverse-mongodb:27017/sysdesigndb \
+  -e REDIS_HOST=algoverse-redis \
+  -e AI_SERVICE_URL=http://algoverse-ai-service:8090 \
+  algoverse/sysdesign-service:local</code></pre>
+</div>
+
+<!-- ─── execution-service ────────────────────────────────────────────────── -->
+<h3 id="svc-execution">7.7 execution-service <span class="badge java">Java 21</span></h3>
+<div class="svc">
+  <div class="svc-header">
+    <span class="svc-name">execution-service</span>
+    <span class="svc-port">:8087</span>
+  </div>
+  <div class="svc-desc">Sandboxed code execution in Docker containers (gVisor in production). Consumes <code>algoverse.execution.requested</code>, runs code, and streams results back via STOMP WebSocket and Kafka.</div>
+
+  <div class="card danger" style="margin-bottom:12px">
+    <div class="card-title">🐳 Docker socket required</div>
+    execution-service spawns Docker containers to run user code. The Docker socket must be mounted into the service container:
+    <pre style="margin:6px 0 0"><code>-v /var/run/docker.sock:/var/run/docker.sock</code></pre>
+  </div>
+
+  <div class="deps">
+    <span class="dep infra">PostgreSQL → execution_db</span>
+    <span class="dep infra">Redis</span>
+    <span class="dep infra">Kafka</span>
+    <span class="dep infra">Docker socket</span>
+    <span class="dep">problem-service :8082</span>
+  </div>
+
+  <h4>A) Run locally</h4>
+<pre><code>cd services/execution-service
+JAVA_HOME=$(/usr/libexec/java_home -v 21) \
+  EXECUTION_DB_URL=jdbc:postgresql://localhost:5432/execution_db \
+  EXECUTION_DB_USER=algoverse \
+  EXECUTION_DB_PASSWORD=secret \
+  REDIS_HOST=localhost \
+  KAFKA_BOOTSTRAP_SERVERS=localhost:29092 \
+  PROBLEM_SERVICE_URL=http://localhost:8082 \
+  mvn spring-boot:run</code></pre>
+
+  <h4>B) Docker (with socket mount)</h4>
+<pre><code>docker build -t algoverse/execution-service:local services/execution-service
+docker run -d --name algoverse-execution-service --network algoverse-net -p 8087:8087 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -e EXECUTION_DB_URL=jdbc:postgresql://algoverse-postgres:5432/execution_db \
+  -e EXECUTION_DB_USER=algoverse -e EXECUTION_DB_PASSWORD=secret \
+  -e REDIS_HOST=algoverse-redis \
+  -e KAFKA_BOOTSTRAP_SERVERS=algoverse-kafka:9092 \
+  -e PROBLEM_SERVICE_URL=http://algoverse-problem-service:8082 \
+  algoverse/execution-service:local</code></pre>
+</div>
+
+<!-- ─── collaboration-service ─────────────────────────────────────────────── -->
+<h3 id="svc-collaboration">7.8 collaboration-service <span class="badge java">Java 21</span></h3>
+<div class="svc">
+  <div class="svc-header">
+    <span class="svc-name">collaboration-service</span>
+    <span class="svc-port">:8088</span>
+  </div>
+  <div class="svc-desc">Real-time collaborative coding rooms via STOMP WebSocket. Implements server-side Operational Transform (OT) for concurrent editing. Room state synced in Redis. STOMP endpoint: <code>ws://localhost:8088/ws-collab/websocket</code>.</div>
+  <div class="deps">
+    <span class="dep infra">PostgreSQL → collaboration_db</span>
+    <span class="dep infra">Redis (room state)</span>
+    <span class="dep infra">Kafka</span>
+  </div>
+
+  <h4>A) Run locally</h4>
+<pre><code>cd services/collaboration-service
+JAVA_HOME=$(/usr/libexec/java_home -v 21) \
+  COLLAB_DB_URL=jdbc:postgresql://localhost:5432/collaboration_db \
+  DB_USERNAME=algoverse DB_PASSWORD=secret \
+  REDIS_HOST=localhost \
+  KAFKA_BOOTSTRAP_SERVERS=localhost:29092 \
+  mvn spring-boot:run</code></pre>
+
+  <h4>B) Docker</h4>
+<pre><code>docker build -t algoverse/collaboration-service:local services/collaboration-service
+docker run -d --name algoverse-collaboration-service --network algoverse-net -p 8088:8088 \
+  -e COLLAB_DB_URL=jdbc:postgresql://algoverse-postgres:5432/collaboration_db \
+  -e DB_USERNAME=algoverse -e DB_PASSWORD=secret \
+  -e REDIS_HOST=algoverse-redis \
+  -e KAFKA_BOOTSTRAP_SERVERS=algoverse-kafka:9092 \
+  algoverse/collaboration-service:local</code></pre>
+</div>
+
+<!-- ─── ai-service ────────────────────────────────────────────────────────── -->
+<h3 id="svc-ai">7.9 ai-service <span class="badge python">Python 3.12</span></h3>
+<div class="svc python">
+  <div class="svc-header">
+    <span class="svc-name">ai-service</span>
+    <span class="svc-port python">:8090</span>
+  </div>
+  <div class="svc-desc">FastAPI service wrapping Anthropic Claude. Provides AI hints, code review, Bayesian Knowledge Tracing (BKT) personalization, and system design feedback. Requires a valid <code>ANTHROPIC_API_KEY</code>.</div>
+  <div class="deps">
+    <span class="dep infra">PostgreSQL → ai_db</span>
+    <span class="dep infra">Redis</span>
+    <span class="dep infra">Kafka</span>
+    <span class="dep">ANTHROPIC_API_KEY</span>
+  </div>
+
+  <h4>A) Run locally (virtualenv)</h4>
+<pre><code>cd services/ai-service
+
+<span class="comment"># Create and activate virtual environment</span>
+python3 -m venv .venv
+source .venv/bin/activate          <span class="comment"># Windows: .venv\Scripts\activate</span>
+
+<span class="comment"># Install dependencies</span>
+pip install -r requirements.txt
+
+<span class="comment"># Run dev server</span>
+AI_DB_URL=postgresql+asyncpg://algoverse:secret@localhost:5432/ai_db \
+  REDIS_HOST=localhost \
+  REDIS_PORT=6379 \
+  KAFKA_BOOTSTRAP_SERVERS=localhost:29092 \
+  ANTHROPIC_API_KEY=sk-ant-YOUR_KEY_HERE \
+  uvicorn app.main:app --host 0.0.0.0 --port 8090 --reload</code></pre>
+
+  <h4>B) Docker</h4>
+<pre><code>docker build -t algoverse/ai-service:local services/ai-service
+docker run -d --name algoverse-ai-service --network algoverse-net -p 8090:8090 \
+  -e AI_DB_URL=postgresql+asyncpg://algoverse:secret@algoverse-postgres:5432/ai_db \
+  -e REDIS_HOST=algoverse-redis \
+  -e KAFKA_BOOTSTRAP_SERVERS=algoverse-kafka:9092 \
+  -e ANTHROPIC_API_KEY=sk-ant-YOUR_KEY_HERE \
+  algoverse/ai-service:local</code></pre>
+
+  <h4>Health</h4>
+<pre><code>curl http://localhost:8090/health
+<span class="comment"># {"status":"ok"}</span></code></pre>
+</div>
+
+<!-- ─── notification-service ─────────────────────────────────────────────── -->
+<h3 id="svc-notification">7.10 notification-service <span class="badge java">Java 21</span></h3>
+<div class="svc">
+  <div class="svc-header">
+    <span class="svc-name">notification-service</span>
+    <span class="svc-port">:8091</span>
+  </div>
+  <div class="svc-desc">Multi-channel notification dispatch (in-app bell, AWS SES email, Firebase Cloud Messaging push). Consumes <code>algoverse.badge.earned</code>, <code>algoverse.streaks.updated</code>, and <code>algoverse.notifications.requested</code> topics. Email and push are disabled by default (<code>EMAIL_ENABLED=false</code>, <code>PUSH_ENABLED=false</code>).</div>
+  <div class="deps">
+    <span class="dep infra">PostgreSQL → notification_db</span>
+    <span class="dep infra">Redis</span>
+    <span class="dep infra">Kafka</span>
+  </div>
+
+  <h4>A) Run locally</h4>
+<pre><code>cd services/notification-service
+JAVA_HOME=$(/usr/libexec/java_home -v 21) \
+  SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/notification_db \
+  SPRING_DATASOURCE_USERNAME=algoverse \
+  SPRING_DATASOURCE_PASSWORD=secret \
+  SPRING_REDIS_HOST=localhost \
+  SPRING_KAFKA_BOOTSTRAP_SERVERS=localhost:29092 \
+  EMAIL_ENABLED=false \
+  PUSH_ENABLED=false \
+  mvn spring-boot:run</code></pre>
+
+  <h4>B) Docker</h4>
+<pre><code>docker build -t algoverse/notification-service:local services/notification-service
+docker run -d --name algoverse-notification-service --network algoverse-net -p 8091:8091 \
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://algoverse-postgres:5432/notification_db \
+  -e SPRING_DATASOURCE_USERNAME=algoverse -e SPRING_DATASOURCE_PASSWORD=secret \
+  -e SPRING_REDIS_HOST=algoverse-redis \
+  -e SPRING_KAFKA_BOOTSTRAP_SERVERS=algoverse-kafka:9092 \
+  -e EMAIL_ENABLED=false -e PUSH_ENABLED=false \
+  algoverse/notification-service:local</code></pre>
+
+  <h4>REST endpoints</h4>
+<pre><code><span class="comment"># Unread count</span>
+curl http://localhost:8091/api/v1/notifications/{userId}/unread-count
+<span class="comment"># List notifications (paginated)</span>
+curl http://localhost:8091/api/v1/notifications/{userId}?page=0&amp;size=20</code></pre>
+</div>
+
+<!-- ─── visualization-service ────────────────────────────────────────────── -->
+<h3 id="svc-visualization">7.11 visualization-service <span class="badge java">Java 21</span></h3>
+<div class="svc">
+  <div class="svc-header">
+    <span class="svc-name">visualization-service</span>
+    <span class="svc-port">:8092</span>
+  </div>
+  <div class="svc-desc">AST-based step-by-step execution tracing for Python (<code>sys.settrace</code>) and JavaScript (Node.js <code>vm</code> module). Stateless — Redis used only as a trace result cache (5-minute TTL). Requires <code>python3</code> and <code>node</code> on the host/container PATH.</div>
+  <div class="deps">
+    <span class="dep infra">Redis (trace cache)</span>
+    <span class="dep">python3 binary on PATH</span>
+    <span class="dep">node binary on PATH</span>
+  </div>
+
+  <h4>A) Run locally</h4>
+<pre><code>cd services/visualization-service
+<span class="comment"># Ensure python3 and node are on PATH</span>
+which python3 &amp;&amp; which node
+
+JAVA_HOME=$(/usr/libexec/java_home -v 21) \
+  REDIS_HOST=localhost \
+  REDIS_PORT=6379 \
+  PYTHON_EXECUTABLE=python3 \
+  NODE_EXECUTABLE=node \
+  mvn spring-boot:run</code></pre>
+
+  <h4>B) Docker</h4>
+<pre><code>docker build -t algoverse/visualization-service:local services/visualization-service
+docker run -d --name algoverse-visualization-service --network algoverse-net -p 8092:8092 \
+  -e REDIS_HOST=algoverse-redis \
+  -e REDIS_PORT=6379 \
+  algoverse/visualization-service:local</code></pre>
+
+  <h4>Test a trace</h4>
+<pre><code>curl -X POST http://localhost:8092/api/v1/visualize/trace \
+  -H "Content-Type: application/json" \
+  -d '{"language":"python","code":"x = 1\ny = x + 2\nprint(y)","input":""}'
+<span class="comment"># Returns {"language":"python","steps":[...],"finalOutput":"3\n","truncated":false}</span></code></pre>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     8. FRONTEND
+══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="frontend">8. Frontend (Vite Dev Server)</h2>
+
+<pre><code>cd apps/web
+
+<span class="comment"># Install dependencies (if not done already)</span>
+npm install
+
+<span class="comment"># Start Vite dev server with HMR</span>
+npm run dev
+<span class="comment"># Available at http://localhost:5173</span></code></pre>
+
+<h4>Frontend environment</h4>
+<p>Create <code>apps/web/.env.local</code> (not committed) with:</p>
+<pre><code><span class="comment"># Point API calls at the Nginx gateway (when running full stack)</span>
+VITE_API_BASE_URL=http://localhost:80
+
+<span class="comment"># OR point directly at services (when running only some services)</span>
+VITE_API_BASE_URL=http://localhost:8081</code></pre>
+
+<h4>Build for production</h4>
+<pre><code>npm run build
+<span class="comment"># Output in apps/web/dist/ — serve with any static host</span></code></pre>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     9. FULL STACK
+══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="fullstack">9. Full Stack with docker-compose (Recommended)</h2>
+
+<div class="card success">
+  <div class="card-title">✅ Fastest way to start everything</div>
+  This is the recommended approach for running the complete platform locally.
+</div>
+
+<div class="step">
+  <div class="step-num">1</div>
+  <div class="step-body">
+    <strong>Copy and configure environment</strong>
+    <pre><code>cp .env.example .env
+<span class="comment"># Edit .env — at minimum set ANTHROPIC_API_KEY and JWT_SECRET</span></code></pre>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-body">
+    <strong>Start everything</strong>
+    <pre><code>make up
+<span class="comment"># Equivalent to: docker compose up -d</span>
+<span class="comment"># This builds all images, starts infra + all 11 services + nginx gateway</span></code></pre>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">3</div>
+  <div class="step-body">
+    <strong>Wait for services to become healthy (~90 seconds)</strong>
+    <pre><code>make ps
+<span class="comment"># Watch until all containers show "healthy" or "(healthy)"</span>
+docker compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"</code></pre>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">4</div>
+  <div class="step-body">
+    <strong>Create Kafka topics</strong>
+    <pre><code>make kafka-topics
+<span class="comment"># Only needed once — topics persist in the Kafka volume</span></code></pre>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">5</div>
+  <div class="step-body">
+    <strong>Start the frontend dev server</strong>
+    <pre><code>make web
+<span class="comment"># Opens http://localhost:5173</span></code></pre>
+  </div>
+</div>
+
+<h4>Other useful make targets</h4>
+<pre><code>make down          <span class="comment"># Stop all containers</span>
+make logs s=auth-service   <span class="comment"># Tail logs for a specific service</span>
+make clean         <span class="comment"># Remove containers AND volumes (wipes all data!)</span>
+make infra         <span class="comment"># Start only infra (no application services)</span></code></pre>
+
+<h4>Start only infrastructure (for local service development)</h4>
+<pre><code><span class="comment"># Start just the infra stack</span>
+make infra
+
+<span class="comment"># Then run whichever services you're working on locally</span>
+<span class="comment"># e.g. if working on problem-service:</span>
+cd services/problem-service
+JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn spring-boot:run</code></pre>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     10. NGINX GATEWAY
+══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="gateway">10. Nginx API Gateway</h2>
+
+<p>When running the full docker-compose stack, all API requests should go through the Nginx gateway on <strong>port 80</strong> rather than individual service ports.</p>
+
+<table>
+  <tr><th>Path Prefix</th><th>Routed To</th><th>Notes</th></tr>
+  <tr><td><code>/api/auth/**</code></td><td>auth-service:8081</td><td>Rate limited: 20 req/min</td></tr>
+  <tr><td><code>/api/problems/**</code></td><td>problem-service:8082</td><td></td></tr>
+  <tr><td><code>/api/submissions/**</code></td><td>submission-service:8083</td><td></td></tr>
+  <tr><td><code>/api/gamification/**</code></td><td>gamification-service:8084</td><td></td></tr>
+  <tr><td><code>/api/analytics/**</code></td><td>analytics-service:8085</td><td></td></tr>
+  <tr><td><code>/api/sysdesign/**</code></td><td>sysdesign-service:8086</td><td></td></tr>
+  <tr><td><code>/ws-exec/**</code></td><td>execution-service:8087</td><td>WebSocket upgrade</td></tr>
+  <tr><td><code>/ws-collab/**</code></td><td>collaboration-service:8088</td><td>WebSocket upgrade, 1h timeout</td></tr>
+  <tr><td><code>/api/collab/**</code></td><td>collaboration-service:8088</td><td></td></tr>
+  <tr><td><code>/api/ai/**</code></td><td>ai-service:8090</td><td>120s read timeout for LLM calls</td></tr>
+  <tr><td><code>/api/v1/notifications/**</code></td><td>notification-service:8091</td><td></td></tr>
+  <tr><td><code>/api/v1/visualize/**</code></td><td>visualization-service:8092</td><td>30s read timeout</td></tr>
+  <tr><td><code>/health</code></td><td>nginx itself</td><td>Returns <code>{"status":"ok"}</code></td></tr>
+  <tr><td><code>/actuator/**</code></td><td>blocked</td><td>Returns 403</td></tr>
+</table>
+
+<pre><code><span class="comment"># Test the gateway health probe</span>
+curl http://localhost/health
+
+<span class="comment"># Test a proxied route</span>
+curl http://localhost/api/auth/actuator/health</code></pre>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     11. PORT REFERENCE
+══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="ports">11. Port Reference</h2>
+
+<table>
+  <tr><th>Service</th><th>Port</th><th>Type</th><th>Notes</th></tr>
+  <tr><td><strong>Nginx Gateway</strong></td><td>80</td><td>HTTP</td><td>Single entry point for all API calls</td></tr>
+  <tr><td>Frontend (Vite)</td><td>5173</td><td>HTTP</td><td>Run with <code>make web</code> or <code>npm run dev</code></td></tr>
+  <tr><td>auth-service</td><td>8081</td><td>HTTP + WebSocket</td><td>JWT, OAuth2, refresh tokens</td></tr>
+  <tr><td>problem-service</td><td>8082</td><td>HTTP</td><td>DSA catalog, Elasticsearch search</td></tr>
+  <tr><td>submission-service</td><td>8083</td><td>HTTP + STOMP/WS</td><td>Code submissions, real-time feedback</td></tr>
+  <tr><td>gamification-service</td><td>8084</td><td>HTTP</td><td>XP, streaks, badges, leaderboard</td></tr>
+  <tr><td>analytics-service</td><td>8085</td><td>HTTP</td><td>Platform metrics &amp; event analytics</td></tr>
+  <tr><td>sysdesign-service</td><td>8086</td><td>HTTP</td><td>System design problems + AI feedback</td></tr>
+  <tr><td>execution-service</td><td>8087</td><td>HTTP + STOMP/WS</td><td>Sandboxed Docker code execution</td></tr>
+  <tr><td>collaboration-service</td><td>8088</td><td>HTTP + STOMP/WS</td><td>Real-time OT collaborative coding</td></tr>
+  <tr><td>Kafka UI</td><td>8089</td><td>HTTP</td><td>Browse topics, messages, consumer groups</td></tr>
+  <tr><td>ai-service</td><td>8090</td><td>HTTP</td><td>FastAPI + Anthropic Claude SDK</td></tr>
+  <tr><td>notification-service</td><td>8091</td><td>HTTP</td><td>In-app bell, SES email, FCM push</td></tr>
+  <tr><td>visualization-service</td><td>8092</td><td>HTTP</td><td>Python/JS AST execution tracing</td></tr>
+  <tr><td>PostgreSQL</td><td>5432</td><td>TCP</td><td>10 logical databases</td></tr>
+  <tr><td>Redis</td><td>6379</td><td>TCP</td><td>Caching, pub/sub, rate limiting</td></tr>
+  <tr><td>Kafka (external)</td><td>29092</td><td>TCP</td><td>Use this from host machine</td></tr>
+  <tr><td>Kafka (internal)</td><td>9092</td><td>TCP</td><td>Use this from inside Docker</td></tr>
+  <tr><td>Zookeeper</td><td>2181</td><td>TCP</td><td>Kafka coordination</td></tr>
+  <tr><td>Elasticsearch</td><td>9200</td><td>HTTP</td><td>Full-text problem search</td></tr>
+  <tr><td>MongoDB</td><td>27017</td><td>TCP</td><td>Problem content, diagram blobs</td></tr>
+</table>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     12. VERIFICATION
+══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="verify">12. Verification &amp; Health Checks</h2>
+
+<pre><code><span class="comment"># Check all containers are running and healthy</span>
+docker compose ps
+
+<span class="comment"># Batch health check — all services</span>
+for port in 8081 8082 8083 8084 8085 8086 8087 8088 8091 8092; do
+  echo -n "Port $port: "
+  curl -sf http://localhost:$port/actuator/health 2>/dev/null | python3 -c \
+    "import sys,json; d=json.load(sys.stdin); print(d.get('status','?'))" \
+    2>/dev/null || echo "UNREACHABLE"
+done
+
+<span class="comment"># ai-service (FastAPI uses /health not /actuator/health)</span>
+curl http://localhost:8090/health
+
+<span class="comment"># Full end-to-end: register a user and get a token</span>
+TOKEN=$(curl -s -X POST http://localhost:8081/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"dev@algoverse.io","password":"Dev1234!","displayName":"Dev"}' \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['accessToken'])")
+
+echo "Token: $TOKEN"
+
+<span class="comment"># Fetch problems list with token</span>
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8082/api/problems?page=0\&amp;size=3
+
+<span class="comment"># Fetch sysdesign problems</span>
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8086/api/sysdesign/problems</code></pre>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     13. TROUBLESHOOTING
+══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="troubleshoot">13. Troubleshooting</h2>
+
+<h3>Service fails with "Connection refused" to PostgreSQL</h3>
+<div class="card warn">
+  <strong>Cause:</strong> Service started before Postgres was healthy.<br/>
+  <strong>Fix:</strong> <code>docker compose restart &lt;service-name&gt;</code> — the <code>depends_on: condition: service_healthy</code> is only enforced on first start, not restart.
+</div>
+
+<h3>Kafka consumer never receives messages</h3>
+<div class="card warn">
+  <strong>Cause:</strong> Topics not created yet, or consumer group offset is ahead.<br/>
+  <strong>Fix:</strong>
+  <pre style="margin:6px 0 0"><code>make kafka-topics   <span class="comment"># create missing topics</span>
+<span class="comment"># Reset offsets if needed:</span>
+docker exec algoverse-kafka kafka-consumer-groups \
+  --bootstrap-server localhost:9092 \
+  --group notification-service --reset-offsets --to-earliest \
+  --topic algoverse.badge.earned --execute</code></pre>
+</div>
+
+<h3>Flyway migration failure on startup</h3>
+<div class="card warn">
+  <strong>Cause:</strong> Database schema is out of sync (e.g. after <code>make clean</code> + <code>make up</code> with schema changes).<br/>
+  <strong>Fix:</strong> <code>make clean</code> wipes volumes — re-running <code>make up</code> will re-run all Flyway migrations from scratch.
+</div>
+
+<h3>Out of memory / containers OOM-killed</h3>
+<div class="card warn">
+  <strong>Cause:</strong> Docker Desktop memory limit too low.<br/>
+  <strong>Fix:</strong> Increase Docker Desktop memory to at least 10 GB (Settings → Resources → Memory).
+  <br/>Alternatively, use <code>make infra</code> and run only the services you need locally.
+</div>
+
+<h3>execution-service cannot spawn containers</h3>
+<div class="card warn">
+  <strong>Cause:</strong> Docker socket not mounted or permission denied.<br/>
+  <strong>Fix:</strong> Ensure the container has <code>-v /var/run/docker.sock:/var/run/docker.sock</code>.
+  On Linux, add the container user to the <code>docker</code> group.
+</div>
+
+<h3>ai-service fails with "ANTHROPIC_API_KEY not set"</h3>
+<div class="card warn">
+  <strong>Cause:</strong> Missing API key in <code>.env</code>.<br/>
+  <strong>Fix:</strong> Get a key at <a href="https://console.anthropic.com">console.anthropic.com</a> and set <code>ANTHROPIC_API_KEY=sk-ant-...</code> in <code>.env</code>.
+  AI features (hints, code review, sysdesign feedback) will be unavailable without it.
+</div>
+
+<h3>Frontend cannot connect to backend (CORS errors)</h3>
+<div class="card warn">
+  <strong>Cause:</strong> <code>VITE_API_BASE_URL</code> pointing at wrong address, or CORS not configured.<br/>
+  <strong>Fix:</strong> Set <code>VITE_API_BASE_URL=http://localhost:80</code> in <code>apps/web/.env.local</code>.
+  Each Spring Boot service already has <code>@CrossOrigin</code> for localhost:5173.
+</div>
+
+<h3>Port already in use</h3>
+<div class="card warn">
+  <strong>Fix:</strong>
+  <pre style="margin:6px 0 0"><code><span class="comment"># Find what's using port 8081</span>
+lsof -i :8081        <span class="comment"># macOS/Linux</span>
+netstat -ano | findstr :8081  <span class="comment"># Windows</span>
+
+<span class="comment"># Kill the process</span>
+kill -9 &lt;PID&gt;</code></pre>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     14. WHAT'S LEFT
+══════════════════════════════════════════════════════════════════════════ -->
+<h2 id="whats-left">14. What's Left to Build</h2>
+
+<h3>🔴 In Progress</h3>
+<table>
+  <tr><th>#</th><th>Item</th><th>Details</th></tr>
+  <tr>
+    <td>8</td>
+    <td>Unit tests — analytics, submission, sysdesign services</td>
+    <td>Mockito unit tests covering use-cases, service impl classes, and REST controllers for these 3 services. Pattern already established in notification-service.</td>
+  </tr>
+</table>
+
+<h3>🟡 Pending — Testing</h3>
+<table>
+  <tr><th>#</th><th>Item</th><th>Details</th></tr>
+  <tr>
+    <td>9</td>
+    <td>Testcontainers integration tests — analytics, submission, sysdesign</td>
+    <td>PostgreSQL + MongoDB/Redis containers. Pattern already done for notification-service and visualization-service.</td>
+  </tr>
+  <tr>
+    <td>10</td>
+    <td>k6 load test — collaboration-service WebSocket</td>
+    <td>Simulate 200 concurrent rooms with 2 participants each. Test OT throughput. Script goes in <code>testing/load/scripts/collaboration.js</code>.</td>
+  </tr>
+  <tr>
+    <td>11</td>
+    <td>Playwright E2E tests — collaboration flow</td>
+    <td>Two-browser test: user A creates room → shares code → user B joins → both type → assert OT convergence. Lives in <code>testing/e2e/</code>.</td>
+  </tr>
+</table>
+
+<h3>🔵 Planned Features</h3>
+<table>
+  <tr><th>Feature</th><th>Details</th></tr>
+  <tr>
+    <td>Three.js algorithm visualizations</td>
+    <td>3D animated visualizations of sorting algorithms (quicksort, mergesort), tree traversal, graph BFS/DFS — powered by React Three Fiber. Integrates with visualization-service trace data.</td>
+  </tr>
+  <tr>
+    <td>Admin panel</td>
+    <td>Problem authoring UI (Markdown editor + test case manager), platform analytics dashboard, user management. Requires a new <code>/admin</code> frontend route + <code>ROLE=ADMIN</code> guard.</td>
+  </tr>
+  <tr>
+    <td>OpenAPI specs — missing services</td>
+    <td>gamification-service, analytics-service, notification-service, visualization-service, sysdesign-service need <code>openapi.yaml</code> specs added to <code>docs/api/</code>.</td>
+  </tr>
+  <tr>
+    <td>Kubernetes manifests</td>
+    <td>Helm charts or raw manifests for all 11 services in <code>infrastructure/kubernetes/</code>. Terraform EKS cluster config exists but service manifests are incomplete.</td>
+  </tr>
+  <tr>
+    <td>Frontend component unit tests</td>
+    <td>Vitest + React Testing Library tests for XpCounter, StreakTracker, AppNav, and editor components. <code>data-testid</code> attributes are already in place.</td>
+  </tr>
+  <tr>
+    <td>Email / Push configuration</td>
+    <td>notification-service has SES + Firebase stubs. Needs real AWS SES credentials and Firebase service account JSON to activate.</td>
+  </tr>
+</table>
+
+<div class="footer">
+  AlgoVerse &mdash; Local Development Guide &mdash; v1.0 &mdash; 2026-05-26<br/>
+  Questions? Open an issue or reach out at <a href="mailto:piyushkmrmandal@gmail.com">piyushkmrmandal@gmail.com</a>
+</div>
+
+</body>
+</html>
