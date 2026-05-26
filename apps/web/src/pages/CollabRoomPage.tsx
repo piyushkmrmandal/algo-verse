@@ -47,7 +47,7 @@ const LANGUAGE_MAP: Record<string, string> = {
 
 interface ChatMsg { userId: string; name: string; text: string; ts: number; color: string }
 
-function ChatPanel({ messages, onSend, color }: {
+function ChatPanel({ messages, onSend, color: _color }: {
   messages: ChatMsg[]
   onSend: (text: string) => void
   color: string
@@ -234,7 +234,7 @@ export default function CollabRoomPage() {
         break
       }
       case 'OPERATION': {
-        const opPayload = msg.payload as ServerOp
+        const opPayload = msg.payload as unknown as ServerOp
         if (msg.userId === user?.id) {
           // Server acknowledged our own operation — flush pending buffer
           const next = otRef.current?.acknowledge(opPayload.serverVersion ?? 0) ?? contentRef.current

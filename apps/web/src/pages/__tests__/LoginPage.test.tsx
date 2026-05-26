@@ -121,7 +121,7 @@ describe('LoginPage', () => {
 
   it('successful login calls setAuth and navigates to /problems', async () => {
     const { api } = await import('../../lib/api');
-    const { useAuthStore } = await import('../../stores/auth-store');
+    await import('../../stores/auth-store');
     const apiMock = api as any;
 
     const mockAuthData = {

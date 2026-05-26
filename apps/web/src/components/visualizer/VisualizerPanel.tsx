@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { api } from '../../lib/api'
 import { PlaybackControls } from './PlaybackControls'
-import { VariableInspector } from './VariableInspector'
 
 // ── Types from visualization-service ─────────────────────────────────────────
 
@@ -43,7 +42,7 @@ const EVENT_COLOR: Record<string, string> = {
 
 // ── VisualizerPanel ───────────────────────────────────────────────────────────
 
-export default function VisualizerPanel({ language, code, onRun, isRunning }: VisualizerPanelProps) {
+export default function VisualizerPanel({ language, code, onRun: _onRun, isRunning: _isRunning }: VisualizerPanelProps) {
   const [trace, setTrace] = useState<TraceResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

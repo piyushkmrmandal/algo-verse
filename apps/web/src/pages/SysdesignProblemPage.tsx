@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import { api } from '../lib/api'
 import { useAuthStore } from '../stores/auth-store'
-import AppNav from '../components/ui/AppNav'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

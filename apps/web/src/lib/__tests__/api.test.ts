@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { api, getErrorMessage, isApiError } from '../api';
-import axios from 'axios';
 
 describe('api axios instance', () => {
   it('has correct baseURL', () => {

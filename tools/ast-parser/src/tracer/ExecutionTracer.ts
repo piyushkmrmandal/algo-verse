@@ -9,12 +9,8 @@ import type {
   ExecutionEvent,
   ExecutionEventType,
   ASTNode,
-  AlgorithmPattern,
-  ComplexityClass,
 } from '../types'
 import { ASTParserFactory } from '../parser/ASTParserFactory'
-import { PatternDetector } from '../detector/PatternDetector'
-import { ComplexityAnalyzer } from '../analyzer/ComplexityAnalyzer'
 
 let _frameIdCounter = 0
 function nextFrameId(): string {
@@ -155,7 +151,6 @@ export class ExecutionTracer {
 
     // Determine if this is an array
     const isArray = node.children.some((c) => c.type === 'ArrayExpression')
-    const isCall = node.children.some((c) => c.type === 'CallExpression')
 
     if (isArray) {
       const arrState: ArrayState = {

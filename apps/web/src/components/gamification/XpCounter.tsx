@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion'
+import { motion, AnimatePresence, animate } from 'framer-motion'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -83,7 +83,6 @@ const useCountUp = (target: number, duration = 0.8): number => {
 
     if (from === target) return
 
-    const mv = { current: from }
     const controls = animate(from, target, {
       duration,
       ease: 'easeOut',
@@ -215,14 +214,14 @@ const XpCounter: React.FC<XpCounterProps> = ({
 
   useEffect(() => {
     const diff = resolvedXp - prevXp.current
+    prevXp.current = resolvedXp
     if (diff > 0) {
       setToastGain(diff)
       const t = setTimeout(() => setToastGain(null), 1500)
-      prevXp.current = resolvedXp
       return () => clearTimeout(t)
     }
-    prevXp.current = resolvedXp
-  }, [totalXp])
+    return undefined
+  }, [resolvedXp])
 
   return (
     <div className="relative flex flex-col items-center gap-3 p-4 rounded-2xl bg-[#111113] border border-[#18181C]">

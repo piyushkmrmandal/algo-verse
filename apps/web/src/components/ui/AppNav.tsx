@@ -48,7 +48,7 @@ const LogoutIcon = () => (
 
 // ── NotificationsPanel ────────────────────────────────────────────────────────
 
-function NotificationsPanel({ onClose }: { onClose: () => void }) {
+function NotificationsPanel({ onClose: _onClose }: { onClose: () => void }) {
   const user = useAuthStore((s) => s.user)
   const queryClient = useQueryClient()
 

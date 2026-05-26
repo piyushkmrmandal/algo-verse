@@ -1,4 +1,4 @@
-import type { Language, ASTNode, ParseResult, ASTNodeType, AlgorithmPattern, ComplexityClass } from '../types'
+import type { Language, ASTNode, ParseResult, ASTNodeType } from '../types'
 import { PatternDetector } from '../detector/PatternDetector'
 import { ComplexityAnalyzer } from '../analyzer/ComplexityAnalyzer'
 
@@ -80,7 +80,7 @@ export class ASTParserFactory {
 
   private static classifyLine(
     trimmed: string,
-    lineNum: number,
+    _lineNum: number,
     col: number,
     pos: { line: number; column: number; offset: number },
     endPos: { line: number; column: number; offset: number },

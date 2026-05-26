@@ -58,7 +58,7 @@ export const CallStackVisualizer: React.FC<CallStackVisualizerProps> = ({ callSt
       )}
 
       <AnimatePresence initial={false} mode="sync">
-        {displayFrames.map((frame, idx) => {
+        {displayFrames.map((frame, _idx) => {
           // Collapsed divider
           if (frame === null) {
             return (

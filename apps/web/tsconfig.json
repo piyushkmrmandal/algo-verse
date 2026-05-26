@@ -8,8 +8,10 @@
     "strict": true,
     "types": ["vite/client", "vitest/globals"],
     "paths": {
-      "@algoverse/shared-types": ["../../libs/shared-types/src/index.ts"],
-      "@algoverse/shared-types/*": ["../../libs/shared-types/src/*"],
+      "@algoverse/shared-types": ["libs/shared-types/src/index.ts"],
+      "@algoverse/shared-types/*": ["libs/shared-types/src/*"],
+      "@algoverse/ast-parser": ["tools/ast-parser/src/index.ts"],
+      "@algoverse/ast-parser/*": ["tools/ast-parser/src/*"],
       "@/*": ["./src/*"]
     }
   },

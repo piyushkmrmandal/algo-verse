@@ -1,7 +1,7 @@
 import React, {
   useCallback,
   useEffect,
-  useMemo,
+
   useRef,
   useState,
 } from 'react'
@@ -349,7 +349,7 @@ const ProblemPage: React.FC = () => {
 
             setSubmission(finalSubmission)
             setTestResults(msg.testResults ?? [])
-            setSubmissionStatus(msg.verdict)
+            setSubmissionStatus(msg.verdict as import('../stores/editor-store').SubmissionStatus)
             setSubmitting(false)
             setRunning(false)
 

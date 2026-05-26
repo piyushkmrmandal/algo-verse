@@ -12,13 +12,18 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\""
   },
-  "workspaces": ["apps/*", "libs/*"],
+  "workspaces": [
+    "apps/*",
+    "libs/*",
+    "tools/*"
+  ],
   "devDependencies": {
     "@nx/eslint": "~19.3.0",
     "@nx/react": "~19.3.0",
     "@nx/vite": "~19.3.0",
     "@nx/workspace": "~19.3.0",
     "@playwright/test": "^1.44.1",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.4.6",
     "@testing-library/react": "^16.0.0",
     "@testing-library/user-event": "^14.5.2",

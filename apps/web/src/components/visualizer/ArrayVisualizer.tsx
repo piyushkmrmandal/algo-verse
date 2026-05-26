@@ -255,7 +255,7 @@ const ArrayCell: React.FC<ArrayCellProps> = React.memo(
     pointers,
     isNumeric,
     maxVal,
-    step,
+    step: _step,
   }) => {
     const hasChanged = value !== prevValue
 

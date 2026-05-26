@@ -239,6 +239,7 @@ const SubmissionPanel: React.FC<SubmissionPanelProps> = ({
       return () => clearTimeout(t)
     }
     prevVerdict.current = submission?.verdict ?? null
+    return undefined
   }, [submission?.verdict])
 
   const failedTest = testResults.find((t) => t.verdict === 'FAILED')

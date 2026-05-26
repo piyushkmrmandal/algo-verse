@@ -19,7 +19,7 @@ interface LayoutNode extends TreeNode {
 
 /** Assign x/y coordinates to every node using in-order traversal. */
 function layoutTree(node: TreeNode, depth = 0, counter = { value: 0 }): LayoutNode {
-  const laid: LayoutNode = { ...node, x: 0, y: depth * VERTICAL_GAP }
+  const laid: LayoutNode = { ...node, x: 0, y: depth * VERTICAL_GAP, left: undefined, right: undefined }
 
   if (node.left) {
     laid.left = layoutTree(node.left, depth + 1, counter)
