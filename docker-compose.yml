@@ -186,6 +186,38 @@ services:
       - algoverse-net
 
   # ──────────────────────────────────────────────────────────────────────────
+  # API Gateway (Nginx)
+  # ──────────────────────────────────────────────────────────────────────────
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: algoverse-gateway
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - auth-service
+      - problem-service
+      - submission-service
+      - gamification-service
+      - sysdesign-service
+      - execution-service
+      - collaboration-service
+      - ai-service
+      - notification-service
+      - visualization-service
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - algoverse-net
+
+  # ──────────────────────────────────────────────────────────────────────────
   # Application Services
   # ──────────────────────────────────────────────────────────────────────────
 

@@ -41,6 +41,11 @@ AlgoVerse is built for software engineers who want to go beyond grinding problem
 | **Testcontainers integration tests — notification-service + visualization-service** | ✅ Done |
 | **data-testid attributes — SysdesignListPage, CollaboratePage, SysdesignProblemPage** | ✅ Done |
 | **Shared type consolidation — SupportedLanguage + toApiLanguage() in shared-types** | ✅ Done |
+| **Nginx API Gateway — single :80 entry point routing all 11 microservices** | ✅ Done |
+| **Sysdesign seed data — 13 problems across Storage/Compute/Messaging/Search/Social/Financial** | ✅ Done |
+| **Badge emoji mapping — per-slug emojis (🩸🥉🥈🥇🔥👑💯⚡) in DashboardPage** | ✅ Done |
+| **OT client — proper Operational Transform engine replacing naive diff in CollabRoomPage** | ✅ Done |
+| **SysdesignProblemPage — AI feedback migrated from queryClient.fetchQuery to useMutation** | ✅ Done |
 | Dark/light theme with CSS variable design tokens | ✅ Done |
 | Three.js algorithm visualizations | Planned |
 | Three.js algorithm visualizations | Planned |
@@ -164,6 +169,7 @@ make clean             # remove containers + volumes (destructive)
 
 | Service | Port | Notes |
 |---|---|---|
+| **Nginx API Gateway** | **80** | **Single entry point — routes all services by path prefix** |
 | Frontend (Vite) | 5173 | Run locally with `make web` |
 | auth-service | 8081 | Spring Boot |
 | problem-service | 8082 | Spring Boot |

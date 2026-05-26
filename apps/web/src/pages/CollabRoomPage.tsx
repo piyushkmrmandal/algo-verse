@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Client, type IMessage } from '@stomp/stompjs'
 import MonacoEditor from '@monaco-editor/react'
 import { useAuthStore } from '../stores/auth-store'
-import { api } from '../lib/api'
+import { OTClient, type ServerOp } from '../lib/ot-client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -116,7 +116,6 @@ export default function CollabRoomPage() {
   const [participants, setParticipants] = useState<Participant[]>([])
   const [connected, setConnected] = useState(false)
   const [connectionError, setConnectionError] = useState('')
-  const [version, setVersion] = useState(0)
 
   // UI state
   const [showChat, setShowChat] = useState(false)
@@ -124,9 +123,8 @@ export default function CollabRoomPage() {
 
   // Refs
   const clientRef = useRef<Client | null>(null)
-  const versionRef = useRef(0)
-  const contentRef = useRef('')
-  const localEdit = useRef(false) // prevent echo back
+  const otRef     = useRef<OTClient | null>(null)  // OT engine instance
+  const contentRef = useRef('')                    // mirrors content for closure captures
 
   // Assign a color to this user
   const myColor = PARTICIPANT_COLORS[
@@ -140,6 +138,19 @@ export default function CollabRoomPage() {
 
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
     const wsUrl = `${protocol}://${window.location.host}/ws-collab/websocket`
+
+    // Initialise OT engine — send function publishes to STOMP
+    const ot = new OTClient('', (op: ServerOp) => {
+      client.publish({
+        destination: '/app/collab.operation',
+        body: JSON.stringify({
+          type: 'OPERATION',
+          roomCode: code,
+          payload: op,
+        }),
+      })
+    })
+    otRef.current = ot
 
     const client = new Client({
       brokerURL: `${wsUrl}?token=${accessToken}`,
@@ -207,11 +218,13 @@ export default function CollabRoomPage() {
     switch (msg.type) {
       case 'ROOM_STATE': {
         const state = msg.payload as unknown as RoomState
-        setContent(state.content ?? '')
-        contentRef.current = state.content ?? ''
+        const initialContent = state.content ?? ''
+        const initialVersion = state.version ?? 0
+        // Reset OT engine with authoritative server state
+        otRef.current?.reset(initialContent, initialVersion)
+        setContent(initialContent)
+        contentRef.current = initialContent
         setLanguage(state.language ?? 'javascript')
-        setVersion(state.version ?? 0)
-        versionRef.current = state.version ?? 0
         setParticipants(
           (state.participants ?? []).map((p, i) => ({
             ...p,
@@ -221,21 +234,18 @@ export default function CollabRoomPage() {
         break
       }
       case 'OPERATION': {
-        if (msg.userId === user?.id) break // skip own echo
-        const op = msg.payload as { type: string; position: number; text?: string; length?: number; serverVersion?: number }
-        setVersion(op.serverVersion ?? versionRef.current + 1)
-        versionRef.current = op.serverVersion ?? versionRef.current + 1
-
-        setContent((prev) => {
-          let next = prev
-          if (op.type === 'INSERT' && op.text) {
-            next = prev.slice(0, op.position) + op.text + prev.slice(op.position)
-          } else if (op.type === 'DELETE' && op.length) {
-            next = prev.slice(0, op.position) + prev.slice(op.position + op.length)
-          }
+        const opPayload = msg.payload as ServerOp
+        if (msg.userId === user?.id) {
+          // Server acknowledged our own operation — flush pending buffer
+          const next = otRef.current?.acknowledge(opPayload.serverVersion ?? 0) ?? contentRef.current
           contentRef.current = next
-          return next
-        })
+          // No setContent needed — document is already correct locally
+        } else {
+          // Remote operation — transform via OT and apply
+          const next = otRef.current?.applyRemote(opPayload) ?? contentRef.current
+          contentRef.current = next
+          setContent(next)
+        }
         break
       }
       case 'JOIN': {
@@ -277,34 +287,17 @@ export default function CollabRoomPage() {
     }
   }, [user?.id, participants.length])
 
-  // ── Editor change → broadcast operation ─────────────────────────────────────
+  // ── Editor change → OT engine → broadcast operation ──────────────────────────
 
   const handleEditorChange = useCallback((newValue: string | undefined) => {
     const val = newValue ?? ''
-    const prev = contentRef.current
-
-    if (!clientRef.current?.connected || val === prev) return
-
-    // Simple diff: find first difference
-    let i = 0
-    while (i < prev.length && i < val.length && prev[i] === val[i]) i++
-
-    const op = val.length > prev.length
-      ? { type: 'INSERT', position: i, text: val.slice(i, i + (val.length - prev.length)) }
-      : { type: 'DELETE', position: i, length: prev.length - val.length }
+    if (!clientRef.current?.connected || !otRef.current) return
+    if (val === contentRef.current) return
 
     contentRef.current = val
-    versionRef.current += 1
-
-    clientRef.current.publish({
-      destination: '/app/collab.operation',
-      body: JSON.stringify({
-        type: 'OPERATION',
-        roomCode: code,
-        payload: { ...op, clientVersion: versionRef.current },
-      }),
-    })
-  }, [code])
+    // OTClient.applyLocal diffs, buffers, transforms, and calls send() if needed
+    otRef.current.applyLocal(val)
+  }, [])
 
   // ── Language change ──────────────────────────────────────────────────────────
 

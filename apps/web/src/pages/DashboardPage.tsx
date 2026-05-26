@@ -16,6 +16,18 @@ interface StreakResponse {
 }
 interface BadgeResponse { id: string; slug: string; name: string; description: string; earnedAt: string }
 
+/** Map each badge slug (from gamification-service V2__seed_badges.sql) to its emoji */
+const BADGE_EMOJI: Record<string, string> = {
+  'first-solve':   '🩸',   // First Blood
+  'easy-dozen':    '🥉',   // Easy Dozen
+  'medium-master': '🥈',   // Medium Master
+  'hard-crusher':  '🥇',   // Hard Crusher
+  'week-warrior':  '🔥',   // Week Warrior  — 7-day streak
+  'month-legend':  '👑',   // Month Legend  — 30-day streak
+  'century':       '💯',   // Century       — 100 problems
+  'speed-demon':   '⚡',   // Speed Demon   — solved in < 5 min
+}
+
 const QUICK_LINKS = [
   { to: '/problems', label: 'Browse Problems', icon: '📚', color: 'from-[#6366F1] to-[#8B5CF6]', desc: 'DSA challenges' },
   { to: '/sysdesign', label: 'System Design', icon: '🏗️', color: 'from-[#10B981] to-[#0D9488]', desc: 'Architecture deep dives' },
@@ -107,7 +119,7 @@ export default function DashboardPage() {
                     title={`${b.name}: ${b.description}`}
                     className="text-xl cursor-help"
                   >
-                    🏅
+                    {BADGE_EMOJI[b.slug] ?? '🏅'}
                   </span>
                 ))}
                 {badges.length > 8 && (

@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import { api } from '../lib/api'
@@ -207,7 +207,13 @@ function DiagramCanvas({
 
 // ── FeedbackPanel ─────────────────────────────────────────────────────────────
 
-function FeedbackPanel({ feedback, isLoading }: { feedback: DiagramFeedback | null; isLoading: boolean }) {
+function FeedbackPanel({
+  feedback, isLoading, error,
+}: {
+  feedback: DiagramFeedback | null
+  isLoading: boolean
+  error?: string | null
+}) {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
@@ -216,6 +222,16 @@ function FeedbackPanel({ feedback, isLoading }: { feedback: DiagramFeedback | nu
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
         </svg>
         <p className="text-[#94A3B8] text-sm">Analyzing your design…</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-4">
+        <span className="text-4xl">⚠️</span>
+        <p className="text-[#F8F8F2] text-sm font-semibold">Feedback failed</p>
+        <p className="text-[#EF4444] text-xs max-w-xs">{error}</p>
       </div>
     )
   }
@@ -296,7 +312,6 @@ function FeedbackPanel({ feedback, isLoading }: { feedback: DiagramFeedback | nu
 export default function SysdesignProblemPage() {
   const { slug } = useParams<{ slug: string }>()
   const user = useAuthStore((s) => s.user)
-  const queryClient = useQueryClient()
 
   // Canvas state
   const [nodes, setNodes] = useState<DiagramNode[]>([])
@@ -327,32 +342,23 @@ export default function SysdesignProblemPage() {
     },
   })
 
-  const { data: feedback, isFetching: feedbackLoading } = useQuery<DiagramFeedback>({
-    queryKey: ['sysdesign', 'feedback', savedDiagramId],
-    queryFn: () =>
-      api.post<DiagramFeedback>(`/sysdesign/diagrams/${savedDiagramId}/review`).then((r) => r.data),
-    enabled: false, // triggered manually
+  const feedbackMutation = useMutation<DiagramFeedback, Error, string>({
+    mutationFn: (diagramId: string) =>
+      api.post<DiagramFeedback>(`/sysdesign/diagrams/${diagramId}/review`).then((r) => r.data),
+    onSuccess: () => {
+      setRightTab('feedback')
+    },
   })
 
   const requestFeedback = () => {
+    setRightTab('feedback')
     if (!savedDiagramId) {
+      // Save first, then request feedback with the new diagram id
       saveMutation.mutate(undefined, {
-        onSuccess: (data) => {
-          queryClient.fetchQuery({
-            queryKey: ['sysdesign', 'feedback', data.id],
-            queryFn: () =>
-              api.post<DiagramFeedback>(`/sysdesign/diagrams/${data.id}/review`).then((r) => r.data),
-          })
-          setRightTab('feedback')
-        },
+        onSuccess: (data) => feedbackMutation.mutate(data.id),
       })
     } else {
-      queryClient.fetchQuery({
-        queryKey: ['sysdesign', 'feedback', savedDiagramId],
-        queryFn: () =>
-          api.post<DiagramFeedback>(`/sysdesign/diagrams/${savedDiagramId}/review`).then((r) => r.data),
-      })
-      setRightTab('feedback')
+      feedbackMutation.mutate(savedDiagramId)
     }
   }
 
@@ -584,7 +590,11 @@ export default function SysdesignProblemPage() {
                   className="absolute inset-0 bg-[#111113]"
                   data-testid="feedback-panel"
                 >
-                  <FeedbackPanel feedback={feedback ?? null} isLoading={feedbackLoading} />
+                  <FeedbackPanel
+                    feedback={feedbackMutation.data ?? null}
+                    isLoading={feedbackMutation.isPending || saveMutation.isPending}
+                    error={feedbackMutation.error?.message ?? null}
+                  />
                 </motion.div>
               )}
             </AnimatePresence>
