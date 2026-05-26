@@ -66,6 +66,13 @@ AlgoVerse is built for software engineers who want to go beyond grinding problem
 | **Three.js algorithm visualizations — Sorting (5 algos), BST, Graph BFS/DFS (`/visualize` page)** | ✅ Done |
 | **CI fix — `@algoverse/ast-parser` workspace, `@testing-library/dom` peer dep, strict TS errors** | ✅ Done |
 | **`.env.example` corrected — removed stale `ANTHROPIC_API_KEY`, fixed JWT to RS256 keys, added all 11 service env vars** | ✅ Done |
+| **Docker build fixes — all 10 service Dockerfiles use `-Dmaven.test.skip=true`; removed invalid `COPY` shell operators** | ✅ Done |
+| **gamification-service — removed dead `com.redis:testcontainers-redis` dep not on Maven Central** | ✅ Done |
+| **gamification-service — SubmissionJudgedConsumer rewritten to use real service APIs (XpResponse, StreakResponse, BadgeResponse)** | ✅ Done |
+| **problem-service — ProblemServiceTest updated with ProblemSearchRepository mock for CreateProblemUseCase** | ✅ Done |
+| **notification-service — added missing `spring-boot-starter-security` dependency** | ✅ Done |
+| **execution-service — SubmissionEventProducer fixed to import domain.model.Submission (not shim)** | ✅ Done |
+| **Zookeeper healthcheck — switched from `nc ruok` (nc not in image) to HTTP admin endpoint port 8080** | ✅ Done |
 | Admin panel — problem authoring, analytics | 🔵 Planned |
 | Vitest unit tests — XpCounter, StreakTracker, AppNav components | 🔵 Planned |
 
