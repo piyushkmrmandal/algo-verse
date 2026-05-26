@@ -47,6 +47,8 @@ AlgoVerse is built for software engineers who want to go beyond grinding problem
 | **OT client — proper Operational Transform engine replacing naive diff in CollabRoomPage** | ✅ Done |
 | **SysdesignProblemPage — AI feedback migrated from queryClient.fetchQuery to useMutation** | ✅ Done |
 | Dark/light theme with CSS variable design tokens | ✅ Done |
+| **Unit tests — analytics-service, submission-service, sysdesign-service (service + Kafka + REST slice)** | ✅ Done |
+| **Maven integration profile (`-P integration`) — analytics, submission, sysdesign services (Testcontainers)** | ✅ Done |
 | Three.js algorithm visualizations | Planned |
 | Three.js algorithm visualizations | Planned |
 | Admin panel — problem authoring, analytics | Planned |
