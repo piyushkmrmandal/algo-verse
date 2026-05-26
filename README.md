@@ -58,11 +58,14 @@ AlgoVerse is built for software engineers who want to go beyond grinding problem
 | **AI service migrated from Anthropic Claude → Ollama (open-source LLM, no API key required)** | ✅ Done |
 | **Gamification component null-safety — StreakTracker + XpCounter prop interface fixes** | ✅ Done |
 | **Demo video — Playwright frame capture + ffmpeg stitched walkthrough (algoverse-demo.mp4)** | ✅ Done |
+| **k6 load test — collaboration WebSocket (STOMP, 200 rooms × 2 users, OT broadcast metrics)** | ✅ Done |
+| **Playwright E2E — collaboration flow (7 tests: guards, create room, join, editor, two-user OT, leave)** | ✅ Done |
+| **Frontend page unit tests — LoginPage + RegisterPage (Vitest + React Testing Library)** | ✅ Done |
+| **Elasticsearch auto-indexing on problem create (CreateProblemUseCase — non-fatal, eventual consistency)** | ✅ Done |
+| **Dead code removal — claude_client.py deleted after full Ollama migration** | ✅ Done |
 | Three.js algorithm visualizations | 🔵 Planned |
 | Admin panel — problem authoring, analytics | 🔵 Planned |
-| k6 load test — collaboration WebSocket (200 rooms × 2 users) | 🟡 Pending |
-| Playwright E2E — two-browser OT convergence test | 🟡 Pending |
-| Frontend unit tests — Vitest + RTL for XpCounter, StreakTracker | 🟡 Pending |
+| Vitest unit tests — XpCounter, StreakTracker, AppNav components | 🔵 Planned |
 
 ---
 
@@ -254,20 +257,27 @@ BASE_URL=http://staging.algoverse.io:8088 WS_URL=ws://staging.algoverse.io:8088 
 ```bash
 cd testing/e2e
 npm install
-# Requires full stack running (make up)
+npx playwright install chromium   # first-time only
+
+# Collaboration flow — 7 tests (guards, create room, join, editor, two-user OT, leave)
+# Requires full stack running (make up) + seed account testuser@algoverse.dev / TestPass123!
 npx playwright test tests/collaboration/collaboration.spec.ts
-npx playwright test --ui  # interactive mode
+npx playwright test tests/auth/
+npx playwright test tests/problems/
+npx playwright test tests/gamification/
+npx playwright test --ui            # interactive mode
 ```
 
 ### Demo Video Capture (Playwright + ffmpeg)
 ```bash
 cd testing/e2e
-# Capture screenshots of all 10 pages into /tmp/algoverse-video/frames/
+# Capture all 10 pages as screenshots into /tmp/algoverse-video/frames/
+# (frontend only — backend not required; auth state is injected via localStorage)
 npx playwright test tests/capture/capture_frames.spec.ts --project=chromium
 
-# Stitch into video (requires ffmpeg: brew install ffmpeg)
+# Stitch into a 35-second H.264 video (requires ffmpeg: brew install ffmpeg)
 bash /tmp/algoverse-video/make_video.sh
-# Output: algoverse-demo.mp4 (35s, H.264, 1280×800)
+# Output: algoverse-demo.mp4 (35s, 1280×800, 25fps)
 ```
 
 ---

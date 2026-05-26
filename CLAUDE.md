@@ -214,3 +214,11 @@ Rules:
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+
+# Rules
+
+- Post every chnages ensure, test and verify that changes are working as expected
+- After every file update finish make sure to run the graphify only for updated file so that new nodes can be updated if there are any changes to be udated
+- Update the README.md file with any considerate change that needs to be recorded in the file
+- Run correct graphify command to update the code changes or changed files 
+- Keep updating all the docs like README.md, LOCAL_DEVELOPMENT_GUIDE.html and others with relevant changes

@@ -9,6 +9,8 @@ import com.algoverse.problem.domain.repository.ProblemRepository;
 import com.algoverse.problem.domain.repository.ProblemTopicRepository;
 import com.algoverse.problem.domain.repository.TestCaseRepository;
 import com.algoverse.problem.domain.repository.TopicRepository;
+import com.algoverse.problem.infrastructure.elasticsearch.ProblemSearchDoc;
+import com.algoverse.problem.infrastructure.elasticsearch.ProblemSearchRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -26,6 +28,7 @@ public class CreateProblemUseCase {
     private final TestCaseRepository testCaseRepository;
     private final ProblemTopicRepository problemTopicRepository;
     private final TopicRepository topicRepository;
+    private final ProblemSearchRepository searchRepository;
 
     @Transactional
     @CacheEvict(value = "problems", allEntries = true)
@@ -63,6 +66,8 @@ public class CreateProblemUseCase {
         Problem saved = problemRepository.save(problem);
         log.info("Problem created with id: {}", saved.getId());
 
+        indexInElasticsearch(saved);
+
         double rate = 0.0;
         return new ProblemDetailDto(
                 saved.getId(),
@@ -83,5 +88,28 @@ public class CreateProblemUseCase {
                 List.of(),
                 List.of()
         );
+    }
+
+    private void indexInElasticsearch(Problem problem) {
+        try {
+            String snippet = problem.getDescription() == null ? "" :
+                    problem.getDescription().length() > 200
+                            ? problem.getDescription().substring(0, 200)
+                            : problem.getDescription();
+
+            ProblemSearchDoc doc = new ProblemSearchDoc(
+                    problem.getId().toString(),
+                    problem.getSlug(),
+                    problem.getTitle(),
+                    problem.getDifficulty() == null ? null : problem.getDifficulty().name(),
+                    snippet,
+                    problem.getTags() == null ? List.of() : problem.getTags()
+            );
+            searchRepository.save(doc);
+            log.debug("Indexed problem in Elasticsearch: slug={}", problem.getSlug());
+        } catch (Exception e) {
+            // Non-fatal — primary store (Postgres) already persisted; ES is eventually consistent
+            log.warn("Failed to index problem in Elasticsearch: slug={} error={}", problem.getSlug(), e.getMessage());
+        }
     }
 }

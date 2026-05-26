@@ -1321,98 +1321,99 @@ kill -9 &lt;PID&gt;</code></pre>
 <!-- ══════════════════════════════════════════════════════════════════════════
      14. WHAT'S LEFT
 ══════════════════════════════════════════════════════════════════════════ -->
-<h2 id="whats-left">14. What's Left to Build</h2>
+<h2 id="whats-left">14. Platform Status &amp; Remaining Work</h2>
 
-<h3>✅ Recently Completed (this sprint)</h3>
+<h3>✅ Completed — All Features &amp; Tests</h3>
 <table>
   <tr><th>Item</th><th>Details</th></tr>
   <tr>
     <td><strong>Cinematic landing page</strong></td>
-    <td>Matrix-rain canvas, Framer Motion staggered animations, typewriter DSA snippets, auth-aware CTAs. Route <code>/</code> now shows <code>IntroPage</code> instead of redirecting.</td>
+    <td>Matrix-rain canvas, Framer Motion staggered animations, typewriter DSA snippets, auth-aware CTAs (<em>Continue Coding</em> vs <em>Start Journey</em>). Route <code>/</code> shows <code>IntroPage</code>.</td>
   </tr>
   <tr>
-    <td><strong>AI service → Ollama migration</strong></td>
-    <td>Replaced Anthropic Claude SDK with <code>httpx</code>-powered <code>ollama_client.py</code>. Default model: <code>qwen2.5-coder:7b</code>. No API key required. All streaming SSE intact.</td>
+    <td><strong>AI service → Ollama (open-source LLM)</strong></td>
+    <td>Replaced Anthropic SDK with <code>httpx</code>-powered <code>ollama_client.py</code>. Default model: <code>qwen2.5-coder:7b</code>. No API key required. Streaming SSE intact. Dead <code>claude_client.py</code> deleted.</td>
   </tr>
   <tr>
-    <td><strong>Maven integration profiles — all 9 services</strong></td>
-    <td><code>-P integration</code> profile with surefire exclusion + failsafe inclusion added to: analytics, submission, sysdesign, notification, visualization, auth, collaboration, execution, problem, gamification.</td>
+    <td><strong>Maven <code>-P integration</code> profile — all 10 services</strong></td>
+    <td>surefire excludes <code>*IntegrationTest</code>; failsafe includes them. Services: analytics, submission, sysdesign, notification, visualization, auth, collaboration, execution, problem, gamification.</td>
   </tr>
   <tr>
-    <td><strong>Testcontainers integration tests — auth-service</strong></td>
-    <td>10 tests: contextLoads, health, register 201/400/409, login 200/401, /me 401/200, refresh 200. Containers: PostgreSQL 16-alpine + Redis 7-alpine.</td>
+    <td><strong>Testcontainers — auth-service (10 tests)</strong></td>
+    <td>register 201/400/409, login 200/401, /me 401/200, refresh 200. PostgreSQL 16-alpine + Redis 7-alpine.</td>
   </tr>
   <tr>
-    <td><strong>Testcontainers integration tests — collaboration-service</strong></td>
-    <td>6 tests: contextLoads, health, security 401 on all endpoints. JWT disabled via <code>@DynamicPropertySource</code>.</td>
+    <td><strong>Testcontainers — collaboration-service (6 tests)</strong></td>
+    <td>contextLoads, health UP, 401 security on all endpoints. JWT disabled via <code>@DynamicPropertySource(jwt.public-key="")</code>.</td>
   </tr>
   <tr>
-    <td><strong>Testcontainers integration tests — execution-service</strong></td>
-    <td>6 tests: contextLoads, health, security 401 checks. Null-safe JWT filter activated via empty public key.</td>
+    <td><strong>Testcontainers — execution-service (6 tests)</strong></td>
+    <td>contextLoads, health UP, 401 security. Null-safe JWT filter passes through when key is blank.</td>
   </tr>
   <tr>
-    <td><strong>Testcontainers integration tests — problem-service</strong></td>
-    <td>7 tests: contextLoads, health, public GET /problems, search, topics, slug lookup, security 401. Four containers: PostgreSQL + MongoDB + Redis + Elasticsearch 8.11.1.</td>
+    <td><strong>Testcontainers — problem-service (7 tests)</strong></td>
+    <td>public GETs for problems/search/topics/slug, 401 on POST. Four containers: PostgreSQL + MongoDB + Redis + Elasticsearch 8.11.1.</td>
   </tr>
   <tr>
-    <td><strong>Testcontainers integration tests — gamification-service</strong></td>
-    <td>Spring Boot upgraded 3.2.5 → 3.3.0 + integration profile with PostgreSQL + Redis containers.</td>
+    <td><strong>Testcontainers — gamification-service</strong></td>
+    <td>Spring Boot 3.2.5 → 3.3.0 (Flyway 10 BOM). PostgreSQL + Redis containers.</td>
   </tr>
   <tr>
     <td><strong>Null-safe JWT filter</strong></td>
-    <td>execution-service + problem-service: <code>parsePublicKey("")</code> returns <code>null</code> (warning log) instead of throwing. Filter passes through when <code>publicKey == null</code>. Enables integration tests without real RSA keys.</td>
+    <td>execution-service + problem-service: <code>parsePublicKey("")</code> returns <code>null</code> + warning log. Filter passes through unauthenticated — enables tests without RSA keys.</td>
   </tr>
   <tr>
-    <td><strong>Gamification component fixes</strong></td>
-    <td><code>StreakTracker</code> + <code>XpCounter</code>: added named exports, updated prop interfaces to match DashboardPage API response shape, null-guarded <code>parseDate</code> against undefined <code>lastSolvedDate</code>.</td>
+    <td><strong>Elasticsearch auto-index on problem create</strong></td>
+    <td><code>CreateProblemUseCase</code> calls <code>searchRepository.save()</code> after Postgres persist. Non-fatal catch — Postgres is source of truth; ES is eventually consistent.</td>
+  </tr>
+  <tr>
+    <td><strong>k6 WebSocket load test — collaboration-service</strong></td>
+    <td><code>testing/load/scripts/collaboration.js</code> — STOMP WS connect, REST room create + WS join, concurrent OT broadcast, presence heartbeat. Custom metrics: <code>ws_connect_errors</code>, <code>op_broadcast_ms</code>, <code>room_create_ms</code>.</td>
+  </tr>
+  <tr>
+    <td><strong>Playwright E2E — collaboration (7 tests)</strong></td>
+    <td><code>testing/e2e/tests/collaboration/collaboration.spec.ts</code> — unauthenticated guard, create room, join by code, Monaco editor visible + input, language selector, two-user OT (second tab), leave room redirect.</td>
+  </tr>
+  <tr>
+    <td><strong>Frontend page unit tests</strong></td>
+    <td>Vitest + RTL: <code>apps/web/src/pages/__tests__/LoginPage.test.tsx</code> + <code>RegisterPage.test.tsx</code>.</td>
+  </tr>
+  <tr>
+    <td><strong>Gamification component null-safety</strong></td>
+    <td><code>StreakTracker</code> + <code>XpCounter</code>: named exports added, prop interfaces updated to match DashboardPage shape (<code>lastSolvedDate</code>, <code>xp</code>, <code>weeklyActivity</code>), <code>parseDate</code> guards <code>null</code>.</td>
   </tr>
   <tr>
     <td><strong>Demo video</strong></td>
-    <td>Playwright frame-capture spec (<code>testing/e2e/tests/capture/</code>) screenshots all 10 pages. ffmpeg stitches into <code>algoverse-demo.mp4</code> (35s, H.264 1280×800, 25fps).</td>
+    <td>Playwright capture spec (<code>testing/e2e/tests/capture/capture_frames.spec.ts</code>) — 10 pages at 1280×800. ffmpeg → <code>algoverse-demo.mp4</code> (35s H.264, 25fps, no backend needed).</td>
   </tr>
 </table>
 
-<h3>🟡 Pending — Testing</h3>
-<table>
-  <tr><th>#</th><th>Item</th><th>Details</th></tr>
-  <tr>
-    <td>10</td>
-    <td>k6 load test — collaboration-service WebSocket</td>
-    <td>Simulate 200 concurrent rooms × 2 participants = 400 WebSocket connections. Test OT throughput under load. Script: <code>testing/load/scripts/collaboration.js</code>.</td>
-  </tr>
-  <tr>
-    <td>11</td>
-    <td>Playwright E2E — collaboration flow</td>
-    <td>Two-browser test: user A creates room → user B joins via code → both type simultaneously → assert OT convergence; disconnect → reconnect → state restored. Lives in <code>testing/e2e/tests/collaboration/</code>.</td>
-  </tr>
-</table>
-
-<h3>🔵 Planned Features</h3>
+<h3>🔵 Planned — Next Up</h3>
 <table>
   <tr><th>Feature</th><th>Details</th></tr>
   <tr>
     <td>Three.js algorithm visualizations</td>
-    <td>3D animated visualizations of sorting algorithms, tree traversal, graph BFS/DFS — powered by React Three Fiber. Integrates with visualization-service trace data.</td>
+    <td>3D animated sorting (quicksort, mergesort), tree traversal, graph BFS/DFS via React Three Fiber. Consumes step data from visualization-service trace API.</td>
   </tr>
   <tr>
     <td>Admin panel</td>
-    <td>Problem authoring UI (Markdown editor + test case manager), platform analytics dashboard, user management. Requires a new <code>/admin</code> route + <code>ROLE=ADMIN</code> guard.</td>
+    <td>Problem authoring (Markdown editor + test case manager), platform analytics dashboard, user management. New <code>/admin</code> route guarded by <code>ROLE=ADMIN</code>.</td>
   </tr>
   <tr>
-    <td>OpenAPI specs — remaining services</td>
-    <td>gamification-service, analytics-service, notification-service, visualization-service, sysdesign-service still need <code>openapi.yaml</code> in <code>docs/api/</code>.</td>
+    <td>Vitest component unit tests — XpCounter, StreakTracker, AppNav</td>
+    <td>Extends existing Vitest + RTL setup. <code>data-testid</code> attributes already on all key components.</td>
   </tr>
   <tr>
-    <td>Frontend component unit tests</td>
-    <td>Vitest + React Testing Library tests for XpCounter, StreakTracker, AppNav, Monaco editor wrapper. <code>data-testid</code> attributes are already in place on key pages.</td>
+    <td>OpenAPI specs — 5 remaining services</td>
+    <td>gamification, analytics, notification, visualization, sysdesign still need <code>openapi.yaml</code> files in <code>docs/api/</code>.</td>
   </tr>
   <tr>
     <td>Email / Push activation</td>
-    <td>notification-service has SES + Firebase stubs with <code>EMAIL_ENABLED=false</code> / <code>PUSH_ENABLED=false</code>. Needs real AWS SES credentials and Firebase service account JSON.</td>
+    <td>notification-service stubs ready (<code>EMAIL_ENABLED=false</code>, <code>PUSH_ENABLED=false</code>). Needs AWS SES credentials + Firebase service-account JSON.</td>
   </tr>
   <tr>
     <td>Kubernetes manifests</td>
-    <td>Helm charts or raw manifests for all 11 services in <code>infrastructure/kubernetes/</code>. Terraform EKS cluster config exists but service manifests are incomplete.</td>
+    <td>Helm charts / raw manifests for all 11 services under <code>infrastructure/kubernetes/</code>. Terraform EKS cluster exists; service manifests are incomplete.</td>
   </tr>
 </table>
 
