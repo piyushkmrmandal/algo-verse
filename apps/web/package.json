@@ -10,7 +10,9 @@
     "test:ui": "vitest --ui"
   },
   "nx": {
-    "tags": ["scope:web"],
+    "tags": [
+      "scope:web"
+    ],
     "targets": {
       "serve": {
         "command": "vite serve --config vite.config.ts"
@@ -31,5 +33,11 @@
         "command": "vitest run"
       }
     }
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
+    "@types/three": "^0.184.1",
+    "three": "^0.184.0"
   }
 }
