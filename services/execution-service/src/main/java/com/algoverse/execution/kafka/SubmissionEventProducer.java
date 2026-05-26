@@ -1,7 +1,7 @@
 package com.algoverse.execution.kafka;
 
 import com.algoverse.execution.domain.JudgeResult;
-import com.algoverse.execution.domain.Submission;
+import com.algoverse.execution.domain.model.Submission;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.micrometer.core.instrument.Counter;
