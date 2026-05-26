@@ -11,7 +11,7 @@ AlgoVerse is a next-generation engineering education platform that combines cine
 AlgoVerse is built for software engineers who want to go beyond grinding problems. It is an intelligent learning environment where:
 
 - **The IDE teaches you** — every code submission is traced at the AST level, generating step-by-step memory and stack visualizations so you can *see* your algorithm run.
-- **An AI mentor guides you** — context-aware hints, automated code review, and natural-language explanations powered by Anthropic Claude, streamed in real time.
+- **An AI mentor guides you** — context-aware hints, automated code review, and natural-language explanations powered by Ollama (open-source LLM — no API key required), streamed in real time.
 - **Your learning adapts** — a Bayesian Knowledge Tracing (BKT) engine models your mastery per topic and serves problems calibrated to your current skill level.
 - **The UI feels alive** — cinematic transitions, GPU-accelerated animations, and an obsessive attention to visual hierarchy make studying feel less like work.
 
@@ -28,7 +28,7 @@ AlgoVerse is built for software engineers who want to go beyond grinding problem
 | Monaco-based code editor (multi-language) | ✅ Done |
 | Sandboxed code execution (Docker + gVisor) | ✅ Done |
 | Real-time submission feedback over WebSocket (STOMP) | ✅ Done |
-| AI mentor — hints, code review, explanations (Claude) | ✅ Done |
+| AI mentor — hints, code review, explanations (Ollama open-source LLM) | ✅ Done |
 | Bayesian Knowledge Tracing personalization engine | ✅ Done |
 | Gamification — XP, streaks, badges, leaderboard | ✅ Done |
 | Analytics — Kafka-driven platform metrics dashboard | ✅ Done |
@@ -52,6 +52,8 @@ AlgoVerse is built for software engineers who want to go beyond grinding problem
 | **Maven integration profile + Testcontainers integration tests — auth, collaboration, execution, problem, gamification** | ✅ Done |
 | **gamification-service Spring Boot upgrade 3.2.5 → 3.3.0** | ✅ Done |
 | **Null-safe JWT filter — execution-service + problem-service (dev/test mode when key not set)** | ✅ Done |
+| **Cinematic landing page — matrix rain canvas, typewriter DSA snippets, animated feature badges** | ✅ Done |
+| **AI service migrated from Anthropic Claude → Ollama (open-source LLM, no API key required)** | ✅ Done |
 | Three.js algorithm visualizations | Planned |
 | Admin panel — problem authoring, analytics | Planned |
 
@@ -77,7 +79,7 @@ AlgoVerse
 │   ├── notification-service/   # Java 21 · Spring Boot 3 · email / push
 │   ├── sysdesign-service/      # Java 21 · Spring Boot 3 · system design module
 │   ├── visualization-service/  # Java 21 · Spring Boot 3 · trace generation
-│   └── ai-service/             # Python · FastAPI · Anthropic Claude SDK · BKT
+│   └── ai-service/             # Python · FastAPI · Ollama (open-source LLM) · BKT
 └── infrastructure/             # Terraform (EKS, RDS, ElastiCache, MSK, S3)
 ```
 
@@ -95,7 +97,7 @@ AlgoVerse
 | Messaging | Apache Kafka (13 topics + DLQs) |
 | Execution sandbox | Docker + gVisor (runsc), --cap-drop=ALL, --network=none, RAM-backed /tmp |
 | Real-time | STOMP over SockJS WebSocket |
-| AI | FastAPI, Anthropic Claude SDK (streaming SSE), BKT personalization |
+| AI | FastAPI, Ollama REST API (streaming SSE), BKT personalization |
 | Database | PostgreSQL (transactional), MongoDB (traces/analytics), Elasticsearch (search) |
 | Observability | Micrometer + Prometheus + Grafana + Loki |
 | Infrastructure | Terraform, AWS EKS, GitHub Actions CI/CD |
@@ -121,7 +123,7 @@ Run infrastructure in Docker and application services locally for fast iteration
 ```bash
 # 1. Copy and configure environment variables
 cp .env.example .env
-# Edit .env — at minimum set ANTHROPIC_API_KEY
+# Edit .env — set OLLAMA_BASE_URL if not using default localhost:11434
 
 # 2. Start all infrastructure (postgres, redis, kafka, elasticsearch, mongodb)
 make infra
@@ -135,6 +137,9 @@ cd services/auth-service && mvn spring-boot:run
 cd services/problem-service && mvn spring-boot:run
 cd services/submission-service && mvn spring-boot:run
 cd services/gamification-service && mvn spring-boot:run
+# AI service — requires Ollama running locally (no API key needed)
+# Install: brew install ollama  |  Pull model: ollama pull qwen2.5-coder:7b
+ollama serve &
 cd services/ai-service && uvicorn main:app --reload --port 8090
 
 # 5. Start the frontend

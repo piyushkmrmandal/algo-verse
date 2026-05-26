@@ -12,7 +12,7 @@ from app.schemas.code_review import (
     ComplexityAnalysis,
     ReviewIssue,
 )
-from app.services.claude_client import complete_json
+from app.services.ollama_client import complete_json
 
 
 async def review_code(
@@ -53,7 +53,7 @@ async def review_code(
         complexity_analysis=raw.get("complexity_analysis", {}),
         pattern_detected=raw.get("pattern_detected"),
         quality_score=quality_score_db,
-        model_used=settings.claude_model,
+        model_used=settings.ai_model,
     )
     db.add(record)
     await db.flush()

@@ -24,10 +24,10 @@ class Settings(BaseSettings):
     kafka_bootstrap_servers: str = "localhost:9092"
     kafka_consumer_group: str = "ai-service-group"
 
-    # Anthropic
-    anthropic_api_key: str
-    claude_model: str = "claude-sonnet-4-6"
-    claude_max_tokens: int = 4096
+    # Ollama (local open-source LLM — run: ollama serve && ollama pull qwen2.5-coder:7b)
+    ollama_base_url: str = "http://localhost:11434"
+    ai_model: str = "qwen2.5-coder:7b"
+    ai_max_tokens: int = 4096
 
     # JWT (RS256 public key from auth-service)
     jwt_public_key: str  # PEM-encoded RSA public key

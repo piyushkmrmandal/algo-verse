@@ -3,6 +3,7 @@ import { createBrowserRouter, Outlet, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/auth-store';
 
 // Lazy-loaded pages
+const IntroPage = lazy(() => import('./pages/IntroPage'));
 const ProblemPage = lazy(() => import('./pages/ProblemPage'));
 const ProblemsListPage = lazy(() => import('./pages/ProblemsListPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -63,7 +64,8 @@ export const router = createBrowserRouter([
     path: '/',
     element: <RootLayout />,
     children: [
-      { index: true, element: <Navigate to="/problems" replace /> },
+      // Landing / cinematic intro — guests see the intro, authenticated users see /problems
+      { index: true, element: <IntroPage /> },
 
       // Public routes
       {

@@ -1,6 +1,6 @@
 from app.prompts.explain_prompt import EXPLAIN_SYSTEM_PROMPT, build_explain_user_message
 from app.schemas.explain import CodeExample, ExplainResponse
-from app.services.claude_client import complete_json
+from app.services.ollama_client import complete_json
 
 
 async def explain_concept(

@@ -10,9 +10,12 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.models.ai_conversation import AiConversation
 from app.prompts.conversation_prompt import TUTOR_SYSTEM_PROMPT
-from app.services.claude_client import stream_message
+from app.services.ollama_client import stream_message
+
+settings = get_settings()
 
 
 async def stream_tutor_response(
@@ -45,7 +48,7 @@ async def stream_tutor_response(
     metadata_payload = json.dumps({
         "conversationId": conv_id,
         "threadId": new_thread_id,
-        "model": "claude-sonnet-4-6",
+        "model": settings.ai_model,
     })
     yield f"id: evt_meta\nevent: metadata\ndata: {metadata_payload}\n\n"
 

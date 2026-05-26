@@ -3,8 +3,8 @@ uvicorn[standard]==0.32.1
 pydantic==2.10.3
 pydantic-settings==2.6.1
 
-# Anthropic Claude SDK
-anthropic==0.40.0
+# Ollama (local open-source LLM inference — no API key required)
+# httpx (already listed below) handles all Ollama REST calls directly
 
 # Database
 asyncpg==0.30.0

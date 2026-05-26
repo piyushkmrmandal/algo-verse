@@ -7,7 +7,7 @@ from app.config import Settings
 from app.models.hint_request import HintRequest
 from app.prompts.hint_prompt import HINT_SYSTEM_PROMPT, build_hint_user_message
 from app.schemas.hints import HintResponse
-from app.services.claude_client import complete
+from app.services.ollama_client import complete
 
 
 async def generate_hint(
@@ -36,7 +36,7 @@ async def generate_hint(
         submission_id=submission_id,
         hint_level=hint_level,
         hint_text=hint_text,
-        model_used=settings.claude_model,
+        model_used=settings.ai_model,
         prompt_tokens=usage["prompt_tokens"],
         completion_tokens=usage["completion_tokens"],
         latency_ms=usage["latency_ms"],

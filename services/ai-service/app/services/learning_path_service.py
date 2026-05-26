@@ -17,7 +17,7 @@ from app.schemas.learning_path import (
     PhaseProblem,
 )
 from app.services.bkt_service import get_user_skills
-from app.services.claude_client import complete_json
+from app.services.ollama_client import complete_json
 
 
 async def create_learning_path(
