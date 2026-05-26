@@ -96,12 +96,13 @@ export default defineConfig({
           'motion-vendor': ['framer-motion'],
           'editor-vendor': ['@monaco-editor/react', 'monaco-editor'],
           'markdown-vendor': ['react-markdown', 'rehype-katex', 'remark-math', 'katex'],
+          'three-vendor': ['three', '@react-three/fiber', '@react-three/drei'],
         },
       },
     },
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'framer-motion', '@monaco-editor/react'],
+    include: ['react', 'react-dom', 'framer-motion', '@monaco-editor/react', 'three', '@react-three/fiber', '@react-three/drei'],
   },
   test: {
     globals: true,

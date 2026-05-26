@@ -63,7 +63,7 @@ AlgoVerse is built for software engineers who want to go beyond grinding problem
 | **Frontend page unit tests — LoginPage + RegisterPage (Vitest + React Testing Library)** | ✅ Done |
 | **Elasticsearch auto-indexing on problem create (CreateProblemUseCase — non-fatal, eventual consistency)** | ✅ Done |
 | **Dead code removal — claude_client.py deleted after full Ollama migration** | ✅ Done |
-| Three.js algorithm visualizations | 🔵 Planned |
+| **Three.js algorithm visualizations — Sorting (5 algos), BST, Graph BFS/DFS (`/visualize` page)** | ✅ Done |
 | Admin panel — problem authoring, analytics | 🔵 Planned |
 | Vitest unit tests — XpCounter, StreakTracker, AppNav components | 🔵 Planned |
 

@@ -15,6 +15,7 @@ const CollaboratePage = lazy(() => import('./pages/CollaboratePage'));
 const CollabRoomPage = lazy(() => import('./pages/CollabRoomPage'));
 const SysdesignListPage = lazy(() => import('./pages/SysdesignListPage'));
 const SysdesignProblemPage = lazy(() => import('./pages/SysdesignProblemPage'));
+const AlgoVisualizerPage = lazy(() => import('./pages/AlgoVisualizerPage'));
 
 function PageLoader() {
   return (
@@ -140,6 +141,15 @@ export const router = createBrowserRouter([
         element: (
           <RequireAuth>
             <SysdesignProblemPage />
+          </RequireAuth>
+        ),
+      },
+
+      {
+        path: 'visualize',
+        element: (
+          <RequireAuth>
+            <AlgoVisualizerPage />
           </RequireAuth>
         ),
       },
