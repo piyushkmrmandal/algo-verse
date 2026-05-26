@@ -54,6 +54,8 @@ AlgoVerse is built for software engineers who want to go beyond grinding problem
 | **Null-safe JWT filter — execution-service + problem-service (dev/test mode when key not set)** | ✅ Done |
 | **Cinematic landing page — matrix rain canvas, typewriter DSA snippets, animated feature badges** | ✅ Done |
 | **AI service migrated from Anthropic Claude → Ollama (open-source LLM, no API key required)** | ✅ Done |
+| **Gamification component null-safety — StreakTracker + XpCounter prop interface fixes** | ✅ Done |
+| **Demo video — Playwright frame capture + ffmpeg stitched walkthrough (algoverse-demo.mp4)** | ✅ Done |
 | Three.js algorithm visualizations | Planned |
 | Admin panel — problem authoring, analytics | Planned |
 
