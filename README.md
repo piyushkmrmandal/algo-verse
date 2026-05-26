@@ -49,7 +49,9 @@ AlgoVerse is built for software engineers who want to go beyond grinding problem
 | Dark/light theme with CSS variable design tokens | ✅ Done |
 | **Unit tests — analytics-service, submission-service, sysdesign-service (service + Kafka + REST slice)** | ✅ Done |
 | **Maven integration profile (`-P integration`) — analytics, submission, sysdesign services (Testcontainers)** | ✅ Done |
-| Three.js algorithm visualizations | Planned |
+| **Maven integration profile + Testcontainers integration tests — auth, collaboration, execution, problem, gamification** | ✅ Done |
+| **gamification-service Spring Boot upgrade 3.2.5 → 3.3.0** | ✅ Done |
+| **Null-safe JWT filter — execution-service + problem-service (dev/test mode when key not set)** | ✅ Done |
 | Three.js algorithm visualizations | Planned |
 | Admin panel — problem authoring, analytics | Planned |
 
@@ -208,14 +210,23 @@ JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn test -pl services/notification-ser
 
 ### Integration Tests (Testcontainers — Docker required)
 ```bash
-# Spins up PostgreSQL, MongoDB, Redis automatically via Docker
-JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/analytics-service  -P integration
-JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/submission-service -P integration
-JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/sysdesign-service  -P integration
-# notification-service — PostgreSQL via Testcontainers, Kafka disabled
-JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/notification-service -P integration
-# visualization-service — Redis via Testcontainers (redis:7-alpine)
+# Spins up real databases/caches automatically via Docker — all 9 services covered
+JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/analytics-service     -P integration
+JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/submission-service    -P integration
+JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/sysdesign-service     -P integration
+JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/notification-service  -P integration
 JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/visualization-service -P integration
+
+# New in this release — full register→login→/me end-to-end (PostgreSQL + Redis)
+JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/auth-service          -P integration
+# collaboration-service — context + security (PostgreSQL + Redis, JWT disabled in test mode)
+JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/collaboration-service -P integration
+# execution-service — context + security (PostgreSQL + Redis, JWT disabled in test mode)
+JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/execution-service     -P integration
+# problem-service — public GET endpoints + security (PostgreSQL + MongoDB + Redis + Elasticsearch 8)
+JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/problem-service       -P integration
+# gamification-service — XP award + badge + leaderboard (upgraded to Spring Boot 3.3.0)
+JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn verify -pl services/gamification-service  -P integration
 ```
 
 ### Load Tests (k6)

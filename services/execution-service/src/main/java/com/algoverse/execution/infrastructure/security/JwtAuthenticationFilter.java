@@ -59,6 +59,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
 
+        if (publicKey == null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String header = request.getHeader(AUTHORIZATION_HEADER);
 
         if (header == null || !header.startsWith(BEARER_PREFIX)) {
@@ -114,6 +119,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private static PublicKey parsePublicKey(String pem) {
+        if (pem == null || pem.isBlank()) {
+            log.warn("jwt.public-key is not configured — JWT validation disabled (dev/test mode)");
+            return null;
+        }
         try {
             // Strip PEM headers/footers and whitespace
             String clean = pem

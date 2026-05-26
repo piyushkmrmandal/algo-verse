@@ -42,7 +42,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         String token = extractToken(request);
-        if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        if (token != null && publicKey != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
                 Claims claims = Jwts.parser()
                         .verifyWith(publicKey)
@@ -84,6 +84,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private PublicKey parsePublicKey(String pem) {
+        if (pem == null || pem.isBlank()) {
+            log.warn("jwt.public-key is not configured — JWT validation disabled (dev/test mode)");
+            return null;
+        }
         try {
             String cleaned = pem
                     .replace("-----BEGIN PUBLIC KEY-----", "")
