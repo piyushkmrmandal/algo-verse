@@ -7,23 +7,16 @@ FROM eclipse-temurin:21-jdk-alpine AS build
 
 WORKDIR /app
 
-# Copy Maven wrapper and pom first (layer-cache friendly)
+# Install Maven
+RUN apk add --no-cache maven
+
+# Copy POM first for layer caching
 COPY pom.xml .
-RUN test -f mvnw || (apk add --no-cache curl && \
-    curl -sL https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.tar.gz | tar xz -C /opt && \
-    ln -s /opt/apache-maven-3.9.6/bin/mvn /usr/local/bin/mvn)
-
-COPY mvnw* ./
-COPY .mvn .mvn
-
-# Download dependencies
-RUN if [ -f mvnw ]; then chmod +x mvnw && ./mvnw dependency:go-offline -q; \
-    else mvn dependency:go-offline -q; fi
+RUN mvn dependency:go-offline -q || true
 
 # Copy source and build
 COPY src ./src
-RUN if [ -f mvnw ]; then ./mvnw package -DskipTests -q; \
-    else mvn package -DskipTests -q; fi
+RUN mvn package -DskipTests -q
 
 # ---- Runtime stage ----------------------------------------------------------
 FROM eclipse-temurin:21-jre-alpine AS runtime

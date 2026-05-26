@@ -7,7 +7,6 @@ WORKDIR /workspace
 
 # Copy Maven wrapper + POM first (cache layer)
 COPY pom.xml .
-COPY .mvn/ .mvn/ 2>/dev/null || true
 
 # Download dependencies (cached unless pom.xml changes)
 RUN apk add --no-cache maven && \

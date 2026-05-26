@@ -6,7 +6,6 @@ FROM eclipse-temurin:21-jdk-alpine AS builder
 WORKDIR /workspace
 
 COPY pom.xml .
-COPY .mvn/ .mvn/ 2>/dev/null || true
 
 RUN apk add --no-cache maven && \
     mvn dependency:go-offline -q || true

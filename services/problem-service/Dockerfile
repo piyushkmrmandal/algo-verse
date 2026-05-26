@@ -8,19 +8,15 @@ FROM eclipse-temurin:21-jdk-alpine AS builder
 
 WORKDIR /workspace
 
-# Copy Maven wrapper + POM first to leverage layer caching
-COPY mvnw .
-COPY .mvn .mvn
+# Install Maven and download dependencies (cached unless pom.xml changes)
+RUN apk add --no-cache maven
+
 COPY pom.xml .
-
-RUN chmod +x mvnw
-
-# Download dependencies (cached unless pom.xml changes)
-RUN ./mvnw dependency:go-offline -q
+RUN mvn dependency:go-offline -q || true
 
 # Copy source and build
 COPY src ./src
-RUN ./mvnw package -DskipTests -q
+RUN mvn package -DskipTests -q
 
 # ── Stage 2: Runtime ─────────────────────────────────────────────────────────
 FROM eclipse-temurin:21-jre-alpine AS runtime
