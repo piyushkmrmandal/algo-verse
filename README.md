@@ -1,8 +1,7 @@
 # AlgoVerse
+AlgoVerse — a distributed DSA and system-design learning platform built as 11 Spring Boot services. Sandboxed multi-language code execution, Kafka-driven analytics, real-time collaborative editing, and an LLM-backed mentor. Built to practise production distributed-systems patterns at full scale, not toy scale.
 
-> **The world's most advanced AI-powered Data Structures, Algorithms & System Design learning platform.**
-
-AlgoVerse is a next-generation engineering education platform that combines cinematic UX, real-time algorithm visualizations, AST-based execution tracing, and an AI mentor — all in a single, beautifully crafted experience. Think LeetCode reimagined from first principles, with a Bayesian personalization engine that adapts every problem recommendation to your exact knowledge state.
+Status: runs locally via Docker Compose. AWS EKS infrastructure is defined in Terraform but not currently deployed.
 
 > 🎬 **Demo video:** [`algoverse-demo.mp4`](./algoverse-demo.mp4) — 35-second walkthrough of all 10 pages (landing → problems → IDE → dashboard → sysdesign → collab room).
 
